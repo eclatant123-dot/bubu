@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -572,6 +573,12 @@
         </div>
     </div>
 
+    <!-- Firebase connection status -->
+    <div id="firebase-status" class="fixed left-3 bottom-3 z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800 shadow-sm">
+        <span id="firebase-status-dot" class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span>
+        <span id="firebase-status-text">Firebase 연결 확인 중...</span>
+    </div>
+
     <!-- Toast Notification Box -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -579,7 +586,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, writeBatch, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBoAmAoEhsNruL3qG2TcINwZdGxT6te_es",
@@ -619,10 +626,28 @@
             return doc(db, 'artifacts', appId, 'public', 'data', name, id);
         }
 
+        function setFirebaseStatus(state, message) {
+            const box = document.getElementById('firebase-status');
+            const dot = document.getElementById('firebase-status-dot');
+            const label = document.getElementById('firebase-status-text');
+            if (!box || !dot || !label) return;
+
+            const styles = {
+                connecting: ['border-amber-200', 'bg-amber-50', 'text-amber-800', 'bg-amber-500'],
+                connected: ['border-emerald-200', 'bg-emerald-50', 'text-emerald-800', 'bg-emerald-500'],
+                error: ['border-rose-200', 'bg-rose-50', 'text-rose-800', 'bg-rose-500']
+            };
+            const selected = styles[state] || styles.connecting;
+
+            box.className = `fixed left-3 bottom-3 z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border px-3 py-2 text-[11px] font-semibold shadow-sm ${selected[0]} ${selected[1]} ${selected[2]}`;
+            dot.className = `inline-block w-2 h-2 rounded-full mr-1.5 ${selected[3]}`;
+            label.textContent = message;
+        }
+
         function firebaseErrorMessage(error) {
             const code = error?.code || '';
-            if (code.includes('operation-not-allowed')) {
-                return 'Firebase 익명 로그인이 꺼져 있습니다. Authentication에서 Anonymous 로그인을 활성화해주세요.';
+            if (code.includes('operation-not-allowed') || code.includes('admin-restricted-operation')) {
+                return 'Firebase 익명 로그인이 꺼져 있습니다. Firebase Console → Authentication → Sign-in method → Anonymous를 사용 설정해주세요.';
             }
             if (code.includes('permission-denied')) {
                 return 'Firestore 보안 규칙이 읽기/쓰기를 막고 있습니다. Firestore Rules를 확인해주세요.';
@@ -642,12 +667,11 @@
         function reportFirebaseError(context, error, showUser = true) {
             console.error(`[Firebase] ${context}:`, error);
             window.appState.firebaseError = error?.code || error?.message || String(error);
-            const code = error?.code || '';
-            if (code.includes('permission-denied') || code.includes('unauthenticated')) {
-                window.appState.isFirebaseReady = false;
-            }
+            window.appState.isFirebaseReady = false;
+            const message = `${context} 실패: ${firebaseErrorMessage(error)}`;
+            setFirebaseStatus('error', message);
             if (showUser && typeof showToast === 'function') {
-                showToast(`${context} 실패: ${firebaseErrorMessage(error)}`, 'rose');
+                showToast(message, 'rose');
             }
         }
 
@@ -672,16 +696,35 @@
 
         async function initFirebase() {
             try {
+                setFirebaseStatus('connecting', 'Firebase 인증 확인 중...');
+
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // 이 앱은 부부가 같은 데이터 공간을 쓰므로 각 기기를 익명 인증한 뒤
-                // 동일한 Firestore 컬렉션을 구독합니다.
+                // 1) Firebase Authentication
                 await signInAnonymously(auth);
+                if (!auth.currentUser) {
+                    throw Object.assign(new Error('Anonymous authentication did not return a user.'), { code: 'auth/no-current-user' });
+                }
+
+                setFirebaseStatus('connecting', 'Firestore 읽기/쓰기 권한 확인 중...');
+
+                // 2) 실제 Firestore 쓰기 테스트
+                const healthRef = documentRef('sync_health', 'shared');
+                await setDoc(healthRef, {
+                    lastConnectedAt: serverTimestamp(),
+                    client: 'couple-web'
+                }, { merge: true });
+
+                // 3) 실제 Firestore 읽기 테스트
+                await getDocs(collectionRef('couple_tasks'));
+
+                // 읽기/쓰기 검증이 끝난 뒤에만 저장 기능 활성화
                 window.appState.isFirebaseReady = true;
                 window.appState.firebaseError = null;
 
+                // 4) 실시간 구독
                 subscribeCollection('couple_tasks', (loaded) => {
                     window.appState.tasks = loaded;
                     if (window.appState.currentMainTab === 'checklist') renderTasks();
@@ -711,12 +754,16 @@
                     if (window.appState.currentMainTab === 'packing') renderPacking();
                 }, '짐싸기 준비물');
 
-                console.info('[Firebase] 실시간 공동작업 연결 완료', auth.currentUser?.uid);
+                console.info('[Firebase] realtime collaboration ready', {
+                    uid: auth.currentUser.uid,
+                    projectId: firebaseConfig.projectId,
+                    appId
+                });
+                setFirebaseStatus('connected', '실시간 공동작업 연결됨');
                 if (typeof showToast === 'function') {
                     showToast('실시간 공동작업 연결 완료', 'success');
                 }
             } catch (error) {
-                window.appState.isFirebaseReady = false;
                 reportFirebaseError('Firebase 연결', error, true);
             }
         }
