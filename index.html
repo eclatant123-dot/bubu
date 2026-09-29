@@ -253,12 +253,15 @@
 
                 <!-- Fast Inline Add Memo -->
                 <form onsubmit="handleMemoSubmit(event)" class="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <input type="hidden" id="memo-edit-id" value="">
                     <textarea id="memo-input-text" required rows="2" placeholder="기억할 일이나 상대방에게 남길 메모를 작성하세요... (예: 마트에서 아기 우유 꼭 사오기!)" class="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 resize-none"></textarea>
-                    <div class="flex items-center justify-between gap-2">
-<div></div>
-                        <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5">
-                            <i class="fa-solid fa-paper-plane text-[10px]"></i>
-                            <span>메모 등록</span>
+                    <div class="flex items-center justify-end gap-2">
+                        <button type="button" id="memo-edit-cancel-btn" onclick="cancelMemoEdit()" class="hidden bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95">
+                            수정 취소
+                        </button>
+                        <button type="submit" id="memo-submit-btn" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5">
+                            <i id="memo-submit-icon" class="fa-solid fa-paper-plane text-[10px]"></i>
+                            <span id="memo-submit-label">메모 등록</span>
                         </button>
                     </div>
                 </form>
@@ -272,26 +275,6 @@
 
         <!-- ==================== TAB 4: PACKING VIEW ==================== -->
         <section id="view-packing" class="hidden space-y-6">
-            <!-- Packing Header Bar -->
-            <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="space-y-1 text-center md:text-left">
-                    <h2 class="text-2xl font-black flex items-center justify-center md:justify-start gap-2">
-                        <span>🧳 상황별 스마트 짐싸기</span>
-                    </h2>
-                    <p class="text-xs text-teal-100">여행, 캠핑, 친정 방문 등 상황별 필수 준비물을 꼼꼼히 챙기고 빠진 물건이 없는지 확인해보세요!</p>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <button onclick="openSituationModal()" class="bg-white/20 hover:bg-white/30 text-white border border-white/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 backdrop-blur-sm active:scale-95">
-                        <i class="fa-solid fa-folder-plus"></i>
-                        <span>새 상황 만들기</span>
-                    </button>
-                    <button onclick="openPackingItemModal()" class="bg-white text-teal-700 hover:bg-teal-50 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 active:scale-95">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>준비물 추가</span>
-                    </button>
-                </div>
-            </div>
-
             <!-- Situation Selection Bar & Progress Card -->
             <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -299,7 +282,15 @@
                         <i class="fa-solid fa-sliders text-teal-600"></i>
                         <span class="text-xs font-bold text-slate-700">상황 선택:</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="openSituationModal()" class="text-[11px] text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-lg border border-teal-200 transition-colors flex items-center gap-1 font-bold">
+                            <i class="fa-solid fa-folder-plus text-[10px]"></i>
+                            <span>새 상황 만들기</span>
+                        </button>
+                        <button onclick="openPackingItemModal()" class="text-[11px] text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-lg border border-teal-600 transition-colors flex items-center gap-1 font-bold">
+                            <i class="fa-solid fa-plus text-[10px]"></i>
+                            <span>준비물 추가</span>
+                        </button>
                         <button onclick="resetPackingStatus()" class="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors flex items-center gap-1">
                             <i class="fa-solid fa-rotate-left text-[10px]"></i>
                             <span>체크 초기화</span>
@@ -883,6 +874,8 @@
                 return true;
             }
 
+            if (!confirm('정말 초기화 하시겠습니까?')) return false;
+
             try {
                 const batch = writeBatch(db);
                 checkedItems.forEach(item => batch.update(documentRef('couple_packing_items', item.id), { checked: false }));
@@ -1026,6 +1019,21 @@
                 return true;
             } catch (error) {
                 reportFirebaseError('메모 저장', error, true);
+                return false;
+            }
+        };
+
+        window.updateMemo = async function(memoId, memoText) {
+            if (!requireFirebase('메모 수정')) return false;
+            try {
+                await updateDoc(documentRef('couple_memos', memoId), {
+                    text: memoText,
+                    updatedAt: Date.now()
+                });
+                showToast('메모가 수정되었습니다!', 'success');
+                return true;
+            } catch (error) {
+                reportFirebaseError('메모 수정', error, true);
                 return false;
             }
         };
@@ -1519,7 +1527,6 @@
                         <div class="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[10px]">
                             <span class="px-2 py-0.5 rounded-md ${badgeBg} font-semibold">${badgeText}</span>
                             <div class="flex items-center gap-2">
-                                <span class="text-slate-400">작성: ${recipe.createdBy || '부부'}</span>
                                 <a href="${escapeHtml(recipe.url)}" target="_blank" rel="noopener noreferrer" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1 rounded-lg flex items-center gap-1 shadow-sm transition-transform active:scale-95">
                                     <span>보기</span>
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
@@ -1552,40 +1559,57 @@
             const sorted = [...memos].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
             container.innerHTML = sorted.map(memo => {
-                const isWife = memo.createdBy === '아내';
-                const bgStyle = isWife ? 'bg-pink-50/60 border-pink-100' : 'bg-blue-50/60 border-blue-100';
-                const tagColor = isWife ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700';
-
-                const timeStr = memo.createdAt ? new Date(memo.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-
                 return `
-                    <div class="memo-card ${bgStyle} border rounded-2xl p-4 shadow-sm flex items-start gap-3 relative group">
-                        <span class="w-8 h-8 rounded-full ${tagColor} flex items-center justify-center font-bold shrink-0 text-sm shadow-sm">
-                            ${isWife ? '👩' : '👨'}
-                        </span>
-                        <div class="flex-1 min-w-0 space-y-1">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-slate-800">${memo.createdBy || '부부'}</span>
-                                <span class="text-[10px] text-slate-400">${timeStr}</span>
-                            </div>
-                            <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed break-words">${escapeHtml(memo.text)}</p>
+                    <div class="memo-card bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-start gap-3 relative group">
+                        <p class="flex-1 min-w-0 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">${escapeHtml(memo.text)}</p>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="openEditMemo('${memo.id}')" class="text-slate-300 hover:text-blue-500 p-1.5 transition-colors" title="메모 수정">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="confirmDeleteMemo('${memo.id}')" class="text-slate-300 hover:text-rose-500 p-1.5 transition-colors" title="메모 삭제">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
                         </div>
-                        <button onclick="confirmDeleteMemo('${memo.id}')" class="text-slate-300 hover:text-rose-500 p-1 opacity-60 hover:opacity-100 transition-opacity">
-                            <i class="fa-solid fa-xmark text-xs"></i>
-                        </button>
                     </div>
                 `;
             }).join('');
         }
 
+        function openEditMemo(memoId) {
+            const memo = (window.appState.memos || []).find(m => m.id === memoId);
+            if (!memo) return;
+
+            const textInput = document.getElementById('memo-input-text');
+            document.getElementById('memo-edit-id').value = memo.id;
+            textInput.value = memo.text || '';
+            document.getElementById('memo-submit-label').textContent = '수정 완료';
+            document.getElementById('memo-submit-icon').className = 'fa-solid fa-check text-[10px]';
+            document.getElementById('memo-edit-cancel-btn').classList.remove('hidden');
+            textInput.focus();
+            textInput.setSelectionRange(textInput.value.length, textInput.value.length);
+            textInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelMemoEdit() {
+            document.getElementById('memo-edit-id').value = '';
+            document.getElementById('memo-input-text').value = '';
+            document.getElementById('memo-submit-label').textContent = '메모 등록';
+            document.getElementById('memo-submit-icon').className = 'fa-solid fa-paper-plane text-[10px]';
+            document.getElementById('memo-edit-cancel-btn').classList.add('hidden');
+        }
+
         async function handleMemoSubmit(e) {
             e.preventDefault();
             const textInput = document.getElementById('memo-input-text');
+            const editId = document.getElementById('memo-edit-id').value;
             const text = textInput.value.trim();
             if (!text) return;
 
-            const saved = await window.saveMemo(text);
-            if (saved) textInput.value = '';
+            const saved = editId
+                ? await window.updateMemo(editId, text)
+                : await window.saveMemo(text);
+
+            if (saved) cancelMemoEdit();
         }
 
         // Modals Logic
@@ -1697,9 +1721,12 @@
             }
         }
 
-        function confirmDeleteMemo(memoId) {
+        async function confirmDeleteMemo(memoId) {
             if (confirm("메모를 삭제하시겠습니까?")) {
-                window.deleteMemo(memoId);
+                const deleted = await window.deleteMemo(memoId);
+                if (deleted && document.getElementById('memo-edit-id')?.value === memoId) {
+                    cancelMemoEdit();
+                }
             }
         }
 
