@@ -628,7 +628,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBoAmAoEhsNruL3qG2TcINwZdGxT6te_es",
@@ -639,8 +639,8 @@
             appId: "1:754561342239:web:da8f2a9e1476dd81f62e2a"
         };
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'couple-checklist-default';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // 두 기기가 항상 같은 Firestore 경로를 사용하도록 앱 ID를 고정합니다.
+        const appId = 'couple-checklist-default';
 
         let db = null;
         let auth = null;
@@ -648,7 +648,7 @@
         // Global State
         window.appState = {
             currentMainTab: 'checklist', // 'checklist', 'recipe', 'memo', 'packing'
-            role: 'wife', // 'wife' or 'husband'
+            role: 'wife', // 새 할 일 창의 기본 담당자 선택에만 사용
             tasks: [],
             recipes: [],
             memos: [],
@@ -656,8 +656,68 @@
             packingItems: [],
             activeSituationId: null,
             isFirebaseReady: false,
+            firebaseError: null,
             sortAscending: true
         };
+
+        function collectionRef(name) {
+            return collection(db, 'artifacts', appId, 'public', 'data', name);
+        }
+
+        function documentRef(name, id) {
+            return doc(db, 'artifacts', appId, 'public', 'data', name, id);
+        }
+
+        function firebaseErrorMessage(error) {
+            const code = error?.code || '';
+            if (code.includes('operation-not-allowed')) {
+                return 'Firebase 익명 로그인이 꺼져 있습니다. Authentication에서 Anonymous 로그인을 활성화해주세요.';
+            }
+            if (code.includes('permission-denied')) {
+                return 'Firestore 보안 규칙이 읽기/쓰기를 막고 있습니다. Firestore Rules를 확인해주세요.';
+            }
+            if (code.includes('unauthenticated')) {
+                return 'Firebase 인증이 완료되지 않았습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.';
+            }
+            if (code.includes('failed-precondition')) {
+                return 'Cloud Firestore 데이터베이스가 아직 준비되지 않았거나 설정이 필요합니다.';
+            }
+            if (code.includes('unavailable') || code.includes('network-request-failed')) {
+                return '네트워크 연결 문제로 Firebase에 접속하지 못했습니다. 인터넷 연결을 확인해주세요.';
+            }
+            return `Firebase 연결 오류${code ? ` (${code})` : ''}`;
+        }
+
+        function reportFirebaseError(context, error, showUser = true) {
+            console.error(`[Firebase] ${context}:`, error);
+            window.appState.firebaseError = error?.code || error?.message || String(error);
+            const code = error?.code || '';
+            if (code.includes('permission-denied') || code.includes('unauthenticated')) {
+                window.appState.isFirebaseReady = false;
+            }
+            if (showUser && typeof showToast === 'function') {
+                showToast(`${context} 실패: ${firebaseErrorMessage(error)}`, 'rose');
+            }
+        }
+
+        function requireFirebase(actionName) {
+            if (window.appState.isFirebaseReady && db && auth?.currentUser) return true;
+            if (typeof showToast === 'function') {
+                showToast(`${actionName}을(를) 저장할 수 없습니다. Firebase 연결 상태를 확인해주세요.`, 'rose');
+            }
+            return false;
+        }
+
+        function subscribeCollection(name, onData, label) {
+            return onSnapshot(collectionRef(name), (snapshot) => {
+                const loaded = [];
+                snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                window.appState.firebaseError = null;
+                onData(loaded);
+            }, (error) => {
+                reportFirebaseError(`${label} 실시간 동기화`, error, true);
+            });
+        }
 
         async function initFirebase() {
             try {
@@ -665,255 +725,177 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
+                // 이 앱은 부부가 같은 데이터 공간을 쓰므로 각 기기를 익명 인증한 뒤
+                // 동일한 Firestore 컬렉션을 구독합니다.
+                await signInAnonymously(auth);
                 window.appState.isFirebaseReady = true;
+                window.appState.firebaseError = null;
 
-                // 1. Real-time Tasks Listener
-                const tasksRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_tasks');
-                onSnapshot(tasksRef, (snapshot) => {
-                    const loaded = [];
-                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                subscribeCollection('couple_tasks', (loaded) => {
                     window.appState.tasks = loaded;
                     if (window.appState.currentMainTab === 'checklist') renderTasks();
-                }, (err) => console.warn("Tasks listener fallback mode active"));
+                }, '체크리스트');
 
-                // 2. Real-time Recipes Listener
-                const recipesRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_recipes');
-                onSnapshot(recipesRef, (snapshot) => {
-                    const loaded = [];
-                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                subscribeCollection('couple_recipes', (loaded) => {
                     window.appState.recipes = loaded;
                     if (window.appState.currentMainTab === 'recipe') renderRecipes();
-                }, (err) => console.warn("Recipes listener fallback mode active"));
+                }, '레시피');
 
-                // 3. Real-time Memos Listener
-                const memosRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_memos');
-                onSnapshot(memosRef, (snapshot) => {
-                    const loaded = [];
-                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                subscribeCollection('couple_memos', (loaded) => {
                     window.appState.memos = loaded;
                     if (window.appState.currentMainTab === 'memo') renderMemos();
-                }, (err) => console.warn("Memos listener fallback mode active"));
+                }, '부부 메모');
 
-                // 4. Real-time Packing Situations Listener
-                const sitRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_situations');
-                onSnapshot(sitRef, (snapshot) => {
-                    const loaded = [];
-                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                subscribeCollection('couple_packing_situations', (loaded) => {
                     window.appState.packingSituations = loaded;
-                    if (!window.appState.activeSituationId && loaded.length > 0) {
-                        window.appState.activeSituationId = loaded[0].id;
+                    const activeStillExists = loaded.some(s => s.id === window.appState.activeSituationId);
+                    if (!activeStillExists) {
+                        window.appState.activeSituationId = loaded.length > 0 ? loaded[0].id : null;
                     }
                     if (window.appState.currentMainTab === 'packing') renderPacking();
-                }, (err) => console.warn("Situations listener fallback active"));
+                }, '짐싸기 상황');
 
-                // 5. Real-time Packing Items Listener
-                const itemRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items');
-                onSnapshot(itemRef, (snapshot) => {
-                    const loaded = [];
-                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                subscribeCollection('couple_packing_items', (loaded) => {
                     window.appState.packingItems = loaded;
                     if (window.appState.currentMainTab === 'packing') renderPacking();
-                }, (err) => console.warn("Packing items listener fallback active"));
+                }, '짐싸기 준비물');
 
-            } catch (err) {
-                console.warn("Firebase Init Error:", err);
-                loadDemoData();
-            }
-        }
-
-        // Load Default Demo Data if database is offline or empty
-        function loadDemoData() {
-            const today = new Date().toISOString().split('T')[0];
-            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-            if (window.appState.tasks.length === 0) {
-                window.appState.tasks = [
-                    { id: 'demo-1', title: '주말에 마트 가서 일주일 장보기', target: 'joint', category: '장보기', priority: 'high', dueDate: tomorrow, memo: '우유, 계란, 사과, 샐러드 채소', completed: false, createdBy: '아내', createdAt: Date.now() - 3600000 },
-                    { id: 'demo-2', title: '영양제 챙겨먹기', target: 'husband', category: '기타', priority: 'medium', dueDate: today, memo: '비타민C, 오메가3', completed: true, createdBy: '아내', createdAt: Date.now() - 7200000 },
-                    { id: 'demo-3', title: '베란다 청소 및 분리수거', target: 'husband', category: '집안일', priority: 'high', dueDate: today, memo: '', completed: false, createdBy: '남편', createdAt: Date.now() - 1800000 }
-                ];
-                renderTasks();
-            }
-
-            if (window.appState.recipes.length === 0) {
-                window.appState.recipes = [
-                    { id: 'rec-1', target: 'adult', title: '성시경 스팸계란볶음밥', url: 'https://www.youtube.com/watch?v=demo1', createdBy: '아내', createdAt: Date.now() - 86400000 },
-                    { id: 'rec-2', target: 'baby', title: '소고기 야채 진밥 이유식', url: 'https://www.instagram.com/p/demo2', createdBy: '남편', createdAt: Date.now() - 43200000 }
-                ];
-                renderRecipes();
-            }
-
-            if (window.appState.memos.length === 0) {
-                window.appState.memos = [
-                    { id: 'memo-1', text: '이번 주 토요일 오후 2시 시댁 방문 약속 있어요!', createdBy: '아내', createdAt: Date.now() - 10000000 },
-                    { id: 'memo-2', text: '택배 베란다에 넣어뒀어요~ 고마워요 ❤️', createdBy: '남편', createdAt: Date.now() - 3000000 }
-                ];
-                renderMemos();
-            }
-
-            if (window.appState.packingSituations.length === 0) {
-                window.appState.packingSituations = [
-                    { id: 'sit-1', name: '🏖️ 아기랑 2박3일 수영장 여행', createdAt: Date.now() - 10000 },
-                    { id: 'sit-2', name: '⛺ 주말 힐링 캠핑', createdAt: Date.now() - 5000 }
-                ];
-                window.appState.activeSituationId = 'sit-1';
-
-                window.appState.packingItems = [
-                    { id: 'pitem-1', situationId: 'sit-1', name: '아기 튜브 & 보밀', category: '👶 아기용품', assignee: 'joint', memo: '바람 넣는 펌프 포함', checked: true },
-                    { id: 'pitem-2', situationId: 'sit-1', name: '아기 분유 & 젖병', category: '👶 아기용품', assignee: 'wife', memo: '3일치 분량', checked: true },
-                    { id: 'pitem-3', situationId: 'sit-1', name: '아기 상비약 (해열제)', category: '💊 비상약/위생', assignee: 'wife', memo: '체온계 함께 챙기기', checked: false },
-                    { id: 'pitem-4', situationId: 'sit-1', name: '스마트폰 충전기', category: '🔌 전자기기', assignee: 'husband', memo: '멀티탭 1개', checked: false },
-                    { id: 'pitem-5', situationId: 'sit-1', name: '여벌옷 & 수영복', category: '👕 의류/잡화', assignee: 'joint', memo: '', checked: false },
-                    { id: 'pitem-6', situationId: 'sit-2', name: '텐트 & 타프', category: '📄 서류/기타', assignee: 'husband', memo: '망치 챙기기', checked: false }
-                ];
-                if (window.appState.currentMainTab === 'packing') renderPacking();
+                console.info('[Firebase] 실시간 공동작업 연결 완료', auth.currentUser?.uid);
+                if (typeof showToast === 'function') {
+                    showToast('실시간 공동작업 연결 완료', 'success');
+                }
+            } catch (error) {
+                window.appState.isFirebaseReady = false;
+                reportFirebaseError('Firebase 연결', error, true);
             }
         }
 
         // Packing Situation Actions
         window.savePackingSituation = async function(name, presetKey = 'none') {
+            if (!requireFirebase('짐싸기 상황')) return false;
+
             const newSit = { name, createdAt: Date.now() };
-            let sitId = 'sit-' + Date.now();
+            try {
+                const docRef = await addDoc(collectionRef('couple_packing_situations'), newSit);
+                const sitId = docRef.id;
+                window.appState.activeSituationId = sitId;
 
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_situations');
-                    const docRef = await addDoc(ref, newSit);
-                    sitId = docRef.id;
-                } catch (e) {
-                    newSit.id = sitId;
-                    window.appState.packingSituations.push(newSit);
+                if (presetKey !== 'none') {
+                    const presetItems = getPresetItems(presetKey, sitId);
+                    for (const item of presetItems) {
+                        const ok = await window.savePackingItem(item, true);
+                        if (!ok) {
+                            showToast('상황은 저장됐지만 일부 기본 준비물을 저장하지 못했습니다.', 'rose');
+                            return true;
+                        }
+                    }
                 }
-            } else {
-                newSit.id = sitId;
-                window.appState.packingSituations.push(newSit);
+
+                showToast(`새 짐싸기 상황 "${name}"이(가) 추가되었습니다.`, 'success');
+                return true;
+            } catch (error) {
+                reportFirebaseError('짐싸기 상황 저장', error, true);
+                return false;
             }
-
-            window.appState.activeSituationId = sitId;
-
-            // Apply Presets if selected
-            if (presetKey !== 'none') {
-                const presetItems = getPresetItems(presetKey, sitId);
-                for (const item of presetItems) {
-                    await window.savePackingItem(item, true);
-                }
-            }
-
-            renderPacking();
-            showToast(`새 짐싸기 상황 "${name}"이(가) 추가되었습니다.`, "success");
         };
 
         window.deletePackingSituation = async function(sitId) {
-            if (!sitId) return;
+            if (!sitId || !requireFirebase('짐싸기 상황 삭제')) return false;
 
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_situations', sitId);
-                    await deleteDoc(ref);
-                } catch (e) {
-                    window.appState.packingSituations = window.appState.packingSituations.filter(s => s.id !== sitId);
-                }
-            } else {
-                window.appState.packingSituations = window.appState.packingSituations.filter(s => s.id !== sitId);
+            try {
+                const batch = writeBatch(db);
+                const itemsToDelete = window.appState.packingItems.filter(i => i.situationId === sitId);
+                itemsToDelete.forEach(item => batch.delete(documentRef('couple_packing_items', item.id)));
+                batch.delete(documentRef('couple_packing_situations', sitId));
+                await batch.commit();
+                showToast('상황이 삭제되었습니다.', 'info');
+                return true;
+            } catch (error) {
+                reportFirebaseError('짐싸기 상황 삭제', error, true);
+                return false;
             }
-
-            // Remove items belonging to deleted situation
-            const itemsToDelete = window.appState.packingItems.filter(i => i.situationId === sitId);
-            for (const i of itemsToDelete) {
-                window.deletePackingItem(i.id, true);
-            }
-
-            window.appState.activeSituationId = window.appState.packingSituations.length > 0 ? window.appState.packingSituations[0].id : null;
-            renderPacking();
-            showToast("상황이 삭제되었습니다.", "info");
         };
 
         // Packing Item Actions
         window.savePackingItem = async function(itemData, silent = false) {
+            if (!requireFirebase('준비물')) return false;
+
             const { id, situationId, name, category, assignee, memo, checked } = itemData;
+            try {
+                if (id) {
+                    await updateDoc(documentRef('couple_packing_items', id), {
+                        name,
+                        category,
+                        assignee,
+                        memo
+                    });
+                } else {
+                    const newItem = {
+                        situationId,
+                        name,
+                        category,
+                        assignee: assignee || 'joint',
+                        memo: memo || '',
+                        checked: checked || false,
+                        createdAt: Date.now()
+                    };
+                    await addDoc(collectionRef('couple_packing_items'), newItem);
+                }
 
-            if (id) {
-                if (window.appState.isFirebaseReady && db) {
-                    try {
-                        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', id);
-                        await updateDoc(ref, { name, category, assignee, memo });
-                    } catch (e) { fallbackUpdatePackingItem(id, { name, category, assignee, memo }); }
-                } else { fallbackUpdatePackingItem(id, { name, category, assignee, memo }); }
-            } else {
-                const newItem = { situationId, name, category, assignee: assignee || 'joint', memo: memo || '', checked: checked || false, createdAt: Date.now() };
-                if (window.appState.isFirebaseReady && db) {
-                    try {
-                        const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items');
-                        await addDoc(ref, newItem);
-                    } catch (e) { fallbackAddPackingItem(newItem); }
-                } else { fallbackAddPackingItem(newItem); }
+                if (!silent) showToast('준비물이 저장되었습니다.', 'success');
+                return true;
+            } catch (error) {
+                reportFirebaseError('준비물 저장', error, true);
+                return false;
             }
-
-            renderPacking();
-            if (!silent) showToast("준비물이 저장되었습니다.", "success");
         };
-
-        function fallbackAddPackingItem(newItem) {
-            newItem.id = 'pitem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5);
-            window.appState.packingItems.push(newItem);
-        }
-
-        function fallbackUpdatePackingItem(id, fields) {
-            const idx = window.appState.packingItems.findIndex(i => i.id === id);
-            if (idx !== -1) window.appState.packingItems[idx] = { ...window.appState.packingItems[idx], ...fields };
-        }
 
         window.togglePackingItem = async function(itemId) {
             const item = window.appState.packingItems.find(i => i.id === itemId);
-            if (!item) return;
-            const newChecked = !item.checked;
+            if (!item || !requireFirebase('준비물 체크')) return false;
 
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', itemId);
-                    await updateDoc(ref, { checked: newChecked });
-                } catch (e) { item.checked = newChecked; renderPacking(); }
-            } else { item.checked = newChecked; renderPacking(); }
+            try {
+                await updateDoc(documentRef('couple_packing_items', itemId), { checked: !item.checked });
+                return true;
+            } catch (error) {
+                reportFirebaseError('준비물 체크', error, true);
+                return false;
+            }
         };
 
         window.deletePackingItem = async function(itemId, silent = false) {
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', itemId);
-                    await deleteDoc(ref);
-                } catch (e) {
-                    window.appState.packingItems = window.appState.packingItems.filter(i => i.id !== itemId);
-                }
-            } else {
-                window.appState.packingItems = window.appState.packingItems.filter(i => i.id !== itemId);
+            if (!requireFirebase('준비물 삭제')) return false;
+
+            try {
+                await deleteDoc(documentRef('couple_packing_items', itemId));
+                if (!silent) showToast('준비물이 삭제되었습니다.', 'info');
+                return true;
+            } catch (error) {
+                reportFirebaseError('준비물 삭제', error, true);
+                return false;
             }
-            renderPacking();
-            if (!silent) showToast("준비물이 삭제되었습니다.", "info");
         };
 
         window.resetPackingStatus = async function() {
             const sitId = window.appState.activeSituationId;
-            if (!sitId) return;
+            if (!sitId || !requireFirebase('짐싸기 체크 초기화')) return false;
 
-            const items = window.appState.packingItems.filter(i => i.situationId === sitId);
-            for (const item of items) {
-                if (item.checked) {
-                    if (window.appState.isFirebaseReady && db) {
-                        try {
-                            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', item.id);
-                            await updateDoc(ref, { checked: false });
-                        } catch (e) { item.checked = false; }
-                    } else { item.checked = false; }
-                }
+            const checkedItems = window.appState.packingItems.filter(i => i.situationId === sitId && i.checked);
+            if (checkedItems.length === 0) {
+                showToast('초기화할 체크 항목이 없습니다.', 'info');
+                return true;
             }
-            renderPacking();
-            showToast("모든 체크가 초기화되었습니다.", "info");
+
+            try {
+                const batch = writeBatch(db);
+                checkedItems.forEach(item => batch.update(documentRef('couple_packing_items', item.id), { checked: false }));
+                await batch.commit();
+                showToast('모든 체크가 초기화되었습니다.', 'info');
+                return true;
+            } catch (error) {
+                reportFirebaseError('짐싸기 체크 초기화', error, true);
+                return false;
+            }
         };
 
         function getPresetItems(presetKey, sitId) {
@@ -950,150 +932,117 @@
 
         // Task CRUD Actions
         window.saveTask = async function(taskData) {
+            if (!requireFirebase('할 일')) return false;
+
             const { id, title, target, dueDate, category, priority, memo } = taskData;
             const createdByRole = '부부';
 
-            if (id) {
-                if (window.appState.isFirebaseReady && db) {
-                    try {
-                        const taskRef = doc(db, 'artifacts', appId, 'public', 'data', 'couple_tasks', id);
-                        await updateDoc(taskRef, { title, target, dueDate, category, priority, memo });
-                        showToast("할 일이 수정되었습니다.", "success");
-                    } catch (e) { fallbackUpdateTask(id, { title, target, dueDate, category, priority, memo }); }
-                } else { fallbackUpdateTask(id, { title, target, dueDate, category, priority, memo }); }
-            } else {
-                const newTask = { title, target, dueDate: dueDate || '', category: category || '집안일', priority: priority || 'medium', memo: memo || '', completed: false, createdBy: createdByRole, createdAt: Date.now() };
-                if (window.appState.isFirebaseReady && db) {
-                    try {
-                        const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_tasks');
-                        await addDoc(ref, newTask);
-                        showToast(`${targetName(target)} 창에 새 할 일이 추가되었습니다!`, "success");
-                    } catch (e) { fallbackAddTask(newTask); }
-                } else { fallbackAddTask(newTask); }
+            try {
+                if (id) {
+                    await updateDoc(documentRef('couple_tasks', id), {
+                        title, target, dueDate, category, priority, memo
+                    });
+                    showToast('할 일이 수정되었습니다.', 'success');
+                } else {
+                    const newTask = {
+                        title,
+                        target,
+                        dueDate: dueDate || '',
+                        category: category || '집안일',
+                        priority: priority || 'medium',
+                        memo: memo || '',
+                        completed: false,
+                        createdBy: createdByRole,
+                        createdAt: Date.now()
+                    };
+                    await addDoc(collectionRef('couple_tasks'), newTask);
+                    showToast(`${targetName(target)} 창에 새 할 일이 추가되었습니다!`, 'success');
+                }
+                return true;
+            } catch (error) {
+                reportFirebaseError(id ? '할 일 수정' : '할 일 추가', error, true);
+                return false;
             }
         };
-
-        function fallbackAddTask(newTask) {
-            newTask.id = 'task-' + Date.now();
-            window.appState.tasks.unshift(newTask);
-            renderTasks();
-            showToast(`${targetName(newTask.target)} 창에 할 일이 추가되었습니다!`, "success");
-        }
-
-        function fallbackUpdateTask(id, fields) {
-            const idx = window.appState.tasks.findIndex(t => t.id === id);
-            if (idx !== -1) {
-                window.appState.tasks[idx] = { ...window.appState.tasks[idx], ...fields };
-                renderTasks();
-                showToast("할 일이 수정되었습니다.", "success");
-            }
-        }
 
         window.toggleTaskComplete = async function(taskId) {
             const task = window.appState.tasks.find(t => t.id === taskId);
-            if (!task) return;
+            if (!task || !requireFirebase('할 일 완료 처리')) return false;
             const newCompleted = !task.completed;
 
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_tasks', taskId);
-                    await updateDoc(ref, { completed: newCompleted });
-                } catch (e) { task.completed = newCompleted; renderTasks(); }
-            } else { task.completed = newCompleted; renderTasks(); }
-
-            if (newCompleted) showToast("👏 할 일을 완료했습니다!", "success");
+            try {
+                await updateDoc(documentRef('couple_tasks', taskId), { completed: newCompleted });
+                if (newCompleted) showToast('👏 할 일을 완료했습니다!', 'success');
+                return true;
+            } catch (error) {
+                reportFirebaseError('할 일 완료 처리', error, true);
+                return false;
+            }
         };
 
         window.deleteTask = async function(taskId) {
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_tasks', taskId);
-                    await deleteDoc(ref);
-                    showToast("삭제되었습니다.", "info");
-                } catch (e) {
-                    window.appState.tasks = window.appState.tasks.filter(t => t.id !== taskId);
-                    renderTasks();
-                }
-            } else {
-                window.appState.tasks = window.appState.tasks.filter(t => t.id !== taskId);
-                renderTasks();
-                showToast("삭제되었습니다.", "info");
+            if (!requireFirebase('할 일 삭제')) return false;
+            try {
+                await deleteDoc(documentRef('couple_tasks', taskId));
+                showToast('삭제되었습니다.', 'info');
+                return true;
+            } catch (error) {
+                reportFirebaseError('할 일 삭제', error, true);
+                return false;
             }
         };
 
         // Recipe Actions
         window.saveRecipe = async function(recipeData) {
-            const createdByRole = '부부';
-            const newRecipe = { ...recipeData, createdBy: createdByRole, createdAt: Date.now() };
+            if (!requireFirebase('레시피')) return false;
+            const newRecipe = { ...recipeData, createdBy: '부부', createdAt: Date.now() };
 
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_recipes');
-                    await addDoc(ref, newRecipe);
-                    showToast("새 레시피가 등록되었습니다!", "success");
-                } catch (e) { fallbackAddRecipe(newRecipe); }
-            } else { fallbackAddRecipe(newRecipe); }
+            try {
+                await addDoc(collectionRef('couple_recipes'), newRecipe);
+                showToast('새 레시피가 등록되었습니다!', 'success');
+                return true;
+            } catch (error) {
+                reportFirebaseError('레시피 저장', error, true);
+                return false;
+            }
         };
 
-        function fallbackAddRecipe(newRecipe) {
-            newRecipe.id = 'recipe-' + Date.now();
-            window.appState.recipes.unshift(newRecipe);
-            renderRecipes();
-            showToast("새 레시피가 등록되었습니다!", "success");
-        }
-
         window.deleteRecipe = async function(recipeId) {
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_recipes', recipeId);
-                    await deleteDoc(ref);
-                    showToast("레시피가 삭제되었습니다.", "info");
-                } catch (e) {
-                    window.appState.recipes = window.appState.recipes.filter(r => r.id !== recipeId);
-                    renderRecipes();
-                }
-            } else {
-                window.appState.recipes = window.appState.recipes.filter(r => r.id !== recipeId);
-                renderRecipes();
-                showToast("레시피가 삭제되었습니다.", "info");
+            if (!requireFirebase('레시피 삭제')) return false;
+            try {
+                await deleteDoc(documentRef('couple_recipes', recipeId));
+                showToast('레시피가 삭제되었습니다.', 'info');
+                return true;
+            } catch (error) {
+                reportFirebaseError('레시피 삭제', error, true);
+                return false;
             }
         };
 
         // Memo Actions
         window.saveMemo = async function(memoText) {
-            const createdByRole = '부부';
-            const newMemo = { text: memoText, createdBy: createdByRole, createdAt: Date.now() };
+            if (!requireFirebase('메모')) return false;
+            const newMemo = { text: memoText, createdBy: '부부', createdAt: Date.now() };
 
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_memos');
-                    await addDoc(ref, newMemo);
-                    showToast("메모가 등록되었습니다!", "success");
-                } catch (e) { fallbackAddMemo(newMemo); }
-            } else { fallbackAddMemo(newMemo); }
+            try {
+                await addDoc(collectionRef('couple_memos'), newMemo);
+                showToast('메모가 등록되었습니다!', 'success');
+                return true;
+            } catch (error) {
+                reportFirebaseError('메모 저장', error, true);
+                return false;
+            }
         };
 
-        function fallbackAddMemo(newMemo) {
-            newMemo.id = 'memo-' + Date.now();
-            window.appState.memos.unshift(newMemo);
-            renderMemos();
-            showToast("메모가 등록되었습니다!", "success");
-        }
-
         window.deleteMemo = async function(memoId) {
-            if (window.appState.isFirebaseReady && db) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_memos', memoId);
-                    await deleteDoc(ref);
-                    showToast("메모가 삭제되었습니다.", "info");
-                } catch (e) {
-                    window.appState.memos = window.appState.memos.filter(m => m.id !== memoId);
-                    renderMemos();
-                }
-            } else {
-                window.appState.memos = window.appState.memos.filter(m => m.id !== memoId);
-                renderMemos();
-                showToast("메모가 삭제되었습니다.", "info");
+            if (!requireFirebase('메모 삭제')) return false;
+            try {
+                await deleteDoc(documentRef('couple_memos', memoId));
+                showToast('메모가 삭제되었습니다.', 'info');
+                return true;
+            } catch (error) {
+                reportFirebaseError('메모 삭제', error, true);
+                return false;
             }
         };
 
@@ -1279,14 +1228,14 @@
             setTimeout(() => { modal.classList.add('hidden'); }, 150);
         }
 
-        function handleSituationSubmit(e) {
+        async function handleSituationSubmit(e) {
             e.preventDefault();
             const name = document.getElementById('situation-name-input').value.trim();
             const preset = document.getElementById('situation-preset-select').value;
             if (!name) return;
 
-            window.savePackingSituation(name, preset);
-            closeSituationModal();
+            const saved = await window.savePackingSituation(name, preset);
+            if (saved) closeSituationModal();
         }
 
         function confirmDeleteSituation() {
@@ -1343,7 +1292,7 @@
             setTimeout(() => { modal.classList.add('hidden'); }, 150);
         }
 
-        function handlePackingItemSubmit(e) {
+        async function handlePackingItemSubmit(e) {
             e.preventDefault();
             const id = document.getElementById('packing-item-id').value;
             const name = document.getElementById('packing-item-name-input').value.trim();
@@ -1353,7 +1302,7 @@
 
             if (!name) return;
 
-            window.savePackingItem({
+            const saved = await window.savePackingItem({
                 id,
                 situationId: window.appState.activeSituationId,
                 name,
@@ -1361,7 +1310,7 @@
                 assignee,
                 memo
             });
-            closePackingItemModal();
+            if (saved) closePackingItemModal();
         }
 
         function confirmDeletePackingItem(itemId) {
@@ -1636,14 +1585,14 @@
             }).join('');
         }
 
-        function handleMemoSubmit(e) {
+        async function handleMemoSubmit(e) {
             e.preventDefault();
             const textInput = document.getElementById('memo-input-text');
             const text = textInput.value.trim();
             if (!text) return;
 
-            window.saveMemo(text);
-            textInput.value = '';
+            const saved = await window.saveMemo(text);
+            if (saved) textInput.value = '';
         }
 
         // Modals Logic
@@ -1697,7 +1646,7 @@
             setTimeout(() => { modal.classList.add('hidden'); }, 150);
         }
 
-        function handleTaskSubmit(e) {
+        async function handleTaskSubmit(e) {
             e.preventDefault();
             const id = document.getElementById('task-id').value;
             const title = document.getElementById('task-title-input').value.trim();
@@ -1708,8 +1657,8 @@
             const memo = document.getElementById('task-memo-input').value.trim();
 
             if (!title) return;
-            window.saveTask({ id, title, target, dueDate, category, priority, memo });
-            closeTaskModal();
+            const saved = await window.saveTask({ id, title, target, dueDate, category, priority, memo });
+            if (saved) closeTaskModal();
         }
 
         function confirmDeleteTask(taskId) {
@@ -1740,7 +1689,7 @@
             setTimeout(() => { modal.classList.add('hidden'); }, 150);
         }
 
-        function handleRecipeSubmit(e) {
+        async function handleRecipeSubmit(e) {
             e.preventDefault();
             const target = document.querySelector('input[name="recipe-target"]:checked').value;
             const title = document.getElementById('recipe-title-input').value.trim();
@@ -1748,8 +1697,8 @@
 
             if (!title || !url) return;
 
-            window.saveRecipe({ target, title, url });
-            closeRecipeModal();
+            const saved = await window.saveRecipe({ target, title, url });
+            if (saved) closeRecipeModal();
         }
 
         function confirmDeleteRecipe(recipeId) {
