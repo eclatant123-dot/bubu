@@ -277,29 +277,15 @@
         <section id="view-packing" class="hidden space-y-6">
             <!-- Situation Selection Bar & Progress Card -->
             <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-teal-600"></i>
-                        <span class="text-xs font-bold text-slate-700">상황 선택:</span>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="openSituationModal()" class="text-[11px] text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-lg border border-teal-200 transition-colors flex items-center gap-1 font-bold">
-                            <i class="fa-solid fa-folder-plus text-[10px]"></i>
-                            <span>새 상황 만들기</span>
-                        </button>
-                        <button onclick="openPackingItemModal()" class="text-[11px] text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-lg border border-teal-600 transition-colors flex items-center gap-1 font-bold">
-                            <i class="fa-solid fa-plus text-[10px]"></i>
-                            <span>준비물 추가</span>
-                        </button>
-                        <button onclick="resetPackingStatus()" class="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors flex items-center gap-1">
-                            <i class="fa-solid fa-rotate-left text-[10px]"></i>
-                            <span>체크 초기화</span>
-                        </button>
-                        <button onclick="confirmDeleteSituation()" class="text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1">
-                            <i class="fa-solid fa-trash-can text-[10px]"></i>
-                            <span>상황 삭제</span>
-                        </button>
-                    </div>
+                <div class="flex items-center justify-start gap-2 border-b border-slate-100 pb-3">
+                    <button onclick="resetPackingStatus()" class="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                        <span>체크 초기화</span>
+                    </button>
+                    <button onclick="confirmDeleteSituation()" class="text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        <span>상황 삭제</span>
+                    </button>
                 </div>
 
                 <!-- Situation Pills -->
@@ -317,10 +303,6 @@
                     </div>
                     <div class="w-full bg-teal-100 rounded-full h-3 overflow-hidden">
                         <div id="packing-progress-bar" class="bg-gradient-to-r from-teal-500 to-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div class="flex justify-between items-center text-[11px] text-teal-700 font-medium">
-                        <span>총 <strong id="packing-total-count">0</strong>개 중 <strong id="packing-checked-count">0</strong>개 챙김</span>
-                        <span id="packing-remaining-text" class="text-teal-600">남은 준비물 0개</span>
                     </div>
                 </div>
             </div>
@@ -526,33 +508,18 @@
                     <input type="text" id="packing-item-name-input" required placeholder="예: 분유, 충전기, 아기 튜브, 상비약..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">카테고리</label>
-                        <input type="text" id="packing-item-category-select" list="packing-category-options" placeholder="카테고리 입력 또는 선택" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
-                        <datalist id="packing-category-options">
-                            <option value="👶 아기용품"></option>
-                            <option value="👕 의류/잡화"></option>
-                            <option value="🧼 세면/화장품"></option>
-                            <option value="🔌 전자기기"></option>
-                            <option value="💊 비상약/위생"></option>
-                            <option value="📄 서류/기타"></option>
-                        </datalist>
-                        <p class="text-[10px] text-slate-400 mt-1">목록에서 고르거나 원하는 카테고리명을 직접 입력할 수 있어요.</p>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">담당자</label>
-                        <select id="packing-item-assignee-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
-                            <option value="joint">👩‍❤️‍👨 공동</option>
-                            <option value="wife">👩 아내</option>
-                            <option value="husband">👨 남편</option>
-                        </select>
-                    </div>
-                </div>
-
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">수량 / 수량 관련 메모 (선택)</label>
-                    <input type="text" id="packing-item-memo-input" placeholder="예: 3벌, 1팩, 2개..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">카테고리</label>
+                    <input type="text" id="packing-item-category-select" list="packing-category-options" placeholder="카테고리 입력 또는 선택" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                    <datalist id="packing-category-options">
+                        <option value="👶 아기용품"></option>
+                        <option value="👕 의류/잡화"></option>
+                        <option value="🧼 세면/화장품"></option>
+                        <option value="🔌 전자기기"></option>
+                        <option value="💊 비상약/위생"></option>
+                        <option value="📄 서류/기타"></option>
+                    </datalist>
+                    <p class="text-[10px] text-slate-400 mt-1">목록에서 고르거나 원하는 카테고리명을 직접 입력할 수 있어요.</p>
                 </div>
 
                 <div class="pt-2 flex items-center justify-end space-x-2">
@@ -808,22 +775,18 @@
         window.savePackingItem = async function(itemData, silent = false) {
             if (!requireFirebase('준비물')) return false;
 
-            const { id, situationId, name, category, assignee, memo, checked } = itemData;
+            const { id, situationId, name, category, checked } = itemData;
             try {
                 if (id) {
                     await updateDoc(documentRef('couple_packing_items', id), {
                         name,
-                        category,
-                        assignee,
-                        memo
+                        category
                     });
                 } else {
                     const newItem = {
                         situationId,
                         name,
                         category,
-                        assignee: assignee || 'joint',
-                        memo: memo || '',
                         checked: checked || false,
                         createdAt: Date.now()
                     };
@@ -1092,8 +1055,17 @@
             // Render Situation Pills
             const sitContainer = document.getElementById('packing-situations-list');
             if (sitContainer) {
+                const addSituationButton = `
+                    <button onclick="openSituationModal()" class="shrink-0 w-8 h-8 rounded-xl bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center shadow-sm transition-transform active:scale-90" title="새 상황 만들기" aria-label="새 상황 만들기">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </button>
+                `;
+
                 if (situations.length === 0) {
-                    sitContainer.innerHTML = `<span class="text-xs text-slate-400 py-1">등록된 상황이 없습니다. [새 상황 만들기]를 눌러 시작하세요!</span>`;
+                    sitContainer.innerHTML = `
+                        <span class="text-xs text-slate-400 py-1">등록된 상황이 없습니다.</span>
+                        ${addSituationButton}
+                    `;
                 } else {
                     sitContainer.innerHTML = situations.map(s => {
                         const isActive = s.id === activeId;
@@ -1103,7 +1075,7 @@
                                 <span>${escapeHtml(s.name)}</span>
                             </button>
                         `;
-                    }).join('');
+                    }).join('') + addSituationButton;
                 }
             }
 
@@ -1117,9 +1089,6 @@
             const checked = currentItems.filter(i => i.checked).length;
             const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
 
-            document.getElementById('packing-total-count').innerText = total;
-            document.getElementById('packing-checked-count').innerText = checked;
-            document.getElementById('packing-remaining-text').innerText = `남은 준비물 ${total - checked}개`;
             document.getElementById('packing-progress-pct').innerText = `${pct}%`;
             document.getElementById('packing-progress-bar').style.width = `${pct}%`;
 
@@ -1140,7 +1109,7 @@
                             <i class="fa-solid fa-box-open"></i>
                         </div>
                         <h4 class="font-bold text-slate-800 text-sm">준비물이 아직 없습니다.</h4>
-                        <p class="text-xs text-slate-400">상단의 [준비물 추가] 버튼을 눌러 이 여행/상황에 필요한 물건을 채워보세요!</p>
+                        <p class="text-xs text-slate-400">아래 버튼을 눌러 이 여행/상황에 필요한 물건을 채워보세요!</p>
                         <button onclick="openPackingItemModal()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-transform active:scale-95">
                             + 준비물 등록하기
                         </button>
@@ -1171,8 +1140,6 @@
                             <div class="space-y-2">
                                 ${catItems.map(item => {
                                     const isDone = item.checked;
-                                    const assigneeTag = item.assignee === 'wife' ? '👩 아내' : item.assignee === 'husband' ? '👨 남편' : '👩‍❤️‍👨 공동';
-                                    const assigneeClass = item.assignee === 'wife' ? 'bg-pink-50 text-pink-600 border-pink-200' : item.assignee === 'husband' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200';
 
                                     return `
                                         <div class="p-2.5 rounded-xl border border-slate-100 ${isDone ? 'bg-slate-50' : 'bg-white hover:border-teal-200'} flex items-start gap-2.5 transition-all group">
@@ -1192,10 +1159,6 @@
                                                             <i class="fa-solid fa-trash-can text-[10px]"></i>
                                                         </button>
                                                     </div>
-                                                </div>
-                                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                                                    <span class="px-1.5 py-0.5 text-[9px] font-medium border rounded-md ${assigneeClass}">${assigneeTag}</span>
-                                                    ${item.memo ? `<span class="text-[10px] text-slate-400 line-clamp-1"><i class="fa-regular fa-note-sticky mr-0.5"></i>${escapeHtml(item.memo)}</span>` : ''}
                                                 </div>
                                             </div>
                                         </div>
@@ -1261,8 +1224,6 @@
             document.getElementById('packing-item-id').value = '';
             document.getElementById('packing-item-name-input').value = '';
             document.getElementById('packing-item-category-select').value = defaultCategory;
-            document.getElementById('packing-item-assignee-select').value = 'joint';
-            document.getElementById('packing-item-memo-input').value = '';
             document.getElementById('packing-item-modal-title').innerHTML = `<i class="fa-solid fa-box text-teal-600"></i> 준비물 추가`;
 
             const modal = document.getElementById('packing-item-modal');
@@ -1278,8 +1239,6 @@
             document.getElementById('packing-item-id').value = item.id;
             document.getElementById('packing-item-name-input').value = item.name;
             document.getElementById('packing-item-category-select').value = item.category || '👶 아기용품';
-            document.getElementById('packing-item-assignee-select').value = item.assignee || 'joint';
-            document.getElementById('packing-item-memo-input').value = item.memo || '';
             document.getElementById('packing-item-modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-teal-600"></i> 준비물 수정`;
 
             const modal = document.getElementById('packing-item-modal');
@@ -1301,8 +1260,6 @@
             const id = document.getElementById('packing-item-id').value;
             const name = document.getElementById('packing-item-name-input').value.trim();
             const category = document.getElementById('packing-item-category-select').value.trim() || '📄 서류/기타';
-            const assignee = document.getElementById('packing-item-assignee-select').value;
-            const memo = document.getElementById('packing-item-memo-input').value.trim();
 
             if (!name) return;
 
@@ -1310,9 +1267,7 @@
                 id,
                 situationId: window.appState.activeSituationId,
                 name,
-                category,
-                assignee,
-                memo
+                category
             });
             if (saved) closePackingItemModal();
         }
