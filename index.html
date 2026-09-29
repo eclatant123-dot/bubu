@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>찬경쀼</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wife: {
+                            light: '#fdf2f8',
+                            DEFAULT: '#ec4899',
+                            dark: '#be185d',
+                            border: '#fbcfe8'
+                        },
+                        husband: {
+                            light: '#eff6ff',
+                            DEFAULT: '#3b82f6',
+                            dark: '#1d4ed8',
+                            border: '#bfdbfe'
+                        },
+                        joint: {
+                            light: '#f0fdf4',
+                            DEFAULT: '#22c55e',
+                            dark: '#15803d',
+                            border: '#bbf7d0'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        .task-card, .recipe-card, .memo-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .task-card:hover, .recipe-card:hover, .memo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-400 to-blue-500 flex items-center justify-center text-white shadow-md text-xl">
+                        <i class="fa-solid font-bold fa-heart"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">찬경쀼</h1>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Navigation Tabs (Checklist / Recipe / Memo) -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full md:w-auto justify-center flex-wrap gap-1">
+                <button id="nav-tab-checklist" onclick="switchMainTab('checklist')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm bg-white text-slate-900">
+                    <i class="fa-solid fa-list-check text-rose-500"></i>
+                    <span>체크리스트</span>
+                </button>
+                <button id="nav-tab-recipe" onclick="switchMainTab('recipe')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-utensils text-amber-500"></i>
+                    <span>레시피 모음</span>
+                </button>
+                <button id="nav-tab-memo" onclick="switchMainTab('memo')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-sticky-note text-blue-500"></i>
+                    <span>부부 메모</span>
+                </button>
+                <button id="nav-tab-packing" onclick="switchMainTab('packing')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-suitcase-rolling text-emerald-500"></i>
+                    <span>짐싸기</span>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ==================== TAB 1: CHECKLIST VIEW ==================== -->
+        <section id="view-checklist" class="space-y-6">
+            
+            <!-- Filter Controls -->
+            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
+                <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-sliders text-slate-400"></i>
+                    <span>할 일 목록 보기</span>
+                </div>
+                <div class="flex items-center space-x-3 text-xs">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-slate-600 select-none">
+                        <input type="checkbox" id="hide-completed-check" onchange="renderTasks()" class="rounded border-slate-300 text-slate-800 focus:ring-slate-500">
+                        <span>완료된 항목 숨기기</span>
+                    </label>
+                    <div class="h-4 w-[1px] bg-slate-200"></div>
+                    <button onclick="sortTasksByDeadline()" class="text-xs text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
+                        <i class="fa-solid fa-arrow-down-short-wide text-slate-400"></i>
+                        <span>기한순 정렬</span>
+                    </button>
+                    <button onclick="openTaskModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>새 할 일</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Columns Layout: Top Left(Wife), Top Right(Husband), Bottom Full Width(Joint) -->
+            <div class="space-y-6">
+                <!-- Top Row: Wife & Husband Split -->
+                <div class="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6 items-start">
+                    
+                    <!-- Left Column: Wife Tasks -->
+                    <div id="column-wife" class="task-column bg-pink-50/30 rounded-2xl sm:rounded-3xl p-2 sm:p-4 border border-pink-100 flex flex-col min-h-[360px] sm:min-h-[420px] min-w-0">
+                        <!-- Column Header -->
+                        <div class="flex items-center justify-between pb-3 mb-3 border-b border-pink-200/60">
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-pink-100 border border-pink-200 flex items-center justify-center text-pink-600 text-sm sm:text-base shadow-sm shrink-0">👩</span>
+                                <div>
+                                    <h2 class="font-bold text-pink-950 text-xs sm:text-base whitespace-nowrap">아내의 할 일</h2>
+                                    <p class="text-[11px] text-pink-600/80 font-medium"><span id="wife-count-badge">0</span>개 대기 중</p>
+                                </div>
+                            </div>
+                            <button onclick="openTaskModal('wife')" class="bg-pink-500 hover:bg-pink-600 text-white w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shadow-sm transition-transform active:scale-90 shrink-0" title="아내 할 일 추가">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                        <!-- Task List Container -->
+                        <div id="wife-task-list" class="space-y-3 flex-1 custom-scrollbar overflow-y-auto pr-1 max-h-[500px]">
+                            <!-- Dynamic rendering -->
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Husband Tasks -->
+                    <div id="column-husband" class="task-column bg-blue-50/30 rounded-2xl sm:rounded-3xl p-2 sm:p-4 border border-blue-100 flex flex-col min-h-[360px] sm:min-h-[420px] min-w-0">
+                        <!-- Column Header -->
+                        <div class="flex items-center justify-between pb-3 mb-3 border-b border-blue-200/60">
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 text-sm sm:text-base shadow-sm shrink-0">👨</span>
+                                <div>
+                                    <h2 class="font-bold text-blue-950 text-xs sm:text-base whitespace-nowrap">남편의 할 일</h2>
+                                    <p class="text-[11px] text-blue-600/80 font-medium"><span id="husband-count-badge">0</span>개 대기 중</p>
+                                </div>
+                            </div>
+                            <button onclick="openTaskModal('husband')" class="bg-blue-500 hover:bg-blue-600 text-white w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shadow-sm transition-transform active:scale-90 shrink-0" title="남편 할 일 추가">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                        <!-- Task List Container -->
+                        <div id="husband-task-list" class="space-y-3 flex-1 custom-scrollbar overflow-y-auto pr-1 max-h-[500px]">
+                            <!-- Dynamic rendering -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Bottom Row: Joint Tasks (Wide Full Width) -->
+                <div id="column-joint" class="task-column bg-emerald-50/30 rounded-3xl p-4 border border-emerald-100 flex flex-col min-h-[280px] w-full">
+                    <!-- Column Header -->
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-200/60">
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-600 text-base shadow-sm">👩‍❤️‍👨</span>
+                            <div>
+                                <h2 class="font-bold text-emerald-950 text-base">공동 과제</h2>
+                                <p class="text-[11px] text-emerald-600/80 font-medium"><span id="joint-count-badge">0</span>개 대기 중</p>
+                            </div>
+                        </div>
+                        <button onclick="openTaskModal('joint')" class="bg-emerald-500 hover:bg-emerald-600 text-white w-8 h-8 rounded-xl flex items-center justify-center shadow-sm transition-transform active:scale-90" title="공동 과제 추가">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                    <!-- Task List Container -->
+                    <div id="joint-task-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 flex-1 custom-scrollbar overflow-y-auto pr-1 max-h-[450px]">
+                        <!-- Dynamic rendering -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: RECIPE VIEW ==================== -->
+        <section id="view-recipe" class="hidden space-y-6">
+            <!-- Recipe Header Bar -->
+            <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 rounded-3xl p-6 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="space-y-1 text-center sm:text-left">
+                    <h2 class="text-2xl font-black flex items-center justify-center sm:justify-start gap-2">
+                        <span>🍳 부부 레시피 북</span>
+                    </h2>
+                    <p class="text-xs text-amber-100">유튜브, 인스타그램에서 찾은 어른밥/아기밥 맛집 레시피 링크를 모아두세요!</p>
+                </div>
+                <button onclick="openRecipeModal()" class="bg-white text-amber-600 hover:bg-amber-50 px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md transition-all flex items-center gap-2 shrink-0 active:scale-95">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>레시피 링크 등록</span>
+                </button>
+            </div>
+
+            <!-- Adult & Baby Food Columns -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                
+                <!-- Adult Food Column -->
+                <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="w-9 h-9 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg font-bold">🍚</span>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">어른밥 레시피</h3>
+                                <p class="text-[11px] text-slate-400">우리 부부를 위한 맛있고 든든한 요리</p>
+                            </div>
+                        </div>
+                        <button onclick="openRecipeModal('adult')" class="text-xs text-amber-600 font-bold hover:underline">
+                            + 등록
+                        </button>
+                    </div>
+                    <div id="adult-recipe-list" class="space-y-3 min-h-[250px]">
+                        <!-- Dynamic Adult Recipes -->
+                    </div>
+                </div>
+
+                <!-- Baby Food Column -->
+                <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="w-9 h-9 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center text-lg font-bold">👶</span>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">아기밥 레시피</h3>
+                                <p class="text-[11px] text-slate-400">아이를 위한 영양 만점 이유식 & 유아식</p>
+                            </div>
+                        </div>
+                        <button onclick="openRecipeModal('baby')" class="text-xs text-pink-600 font-bold hover:underline">
+                            + 등록
+                        </button>
+                    </div>
+                    <div id="baby-recipe-list" class="space-y-3 min-h-[250px]">
+                        <!-- Dynamic Baby Recipes -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: MEMO VIEW ==================== -->
+        <section id="view-memo" class="hidden space-y-6 max-w-4xl mx-auto">
+            <!-- Memo Top Banner & Add Form -->
+            <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-9 h-9 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg">📝</span>
+                        <div>
+                            <h2 class="font-bold text-slate-800 text-base">부부 메모장</h2>
+                            <p class="text-[11px] text-slate-400">서로 기억해야 할 일, 사랑의 메시지나 간단한 메모를 남겨보세요.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fast Inline Add Memo -->
+                <form onsubmit="handleMemoSubmit(event)" class="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <textarea id="memo-input-text" required rows="2" placeholder="기억할 일이나 상대방에게 남길 메모를 작성하세요... (예: 마트에서 아기 우유 꼭 사오기!)" class="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 resize-none"></textarea>
+                    <div class="flex items-center justify-between gap-2">
+<div></div>
+                        <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5">
+                            <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                            <span>메모 등록</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Memo List Feed -->
+            <div id="memo-feed-list" class="space-y-3">
+                <!-- Dynamic Memos -->
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: PACKING VIEW ==================== -->
+        <section id="view-packing" class="hidden space-y-6">
+            <!-- Packing Header Bar -->
+            <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="space-y-1 text-center md:text-left">
+                    <h2 class="text-2xl font-black flex items-center justify-center md:justify-start gap-2">
+                        <span>🧳 상황별 스마트 짐싸기</span>
+                    </h2>
+                    <p class="text-xs text-teal-100">여행, 캠핑, 친정 방문 등 상황별 필수 준비물을 꼼꼼히 챙기고 빠진 물건이 없는지 확인해보세요!</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="openSituationModal()" class="bg-white/20 hover:bg-white/30 text-white border border-white/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 backdrop-blur-sm active:scale-95">
+                        <i class="fa-solid fa-folder-plus"></i>
+                        <span>새 상황 만들기</span>
+                    </button>
+                    <button onclick="openPackingItemModal()" class="bg-white text-teal-700 hover:bg-teal-50 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>준비물 추가</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Situation Selection Bar & Progress Card -->
+            <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-teal-600"></i>
+                        <span class="text-xs font-bold text-slate-700">상황 선택:</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="resetPackingStatus()" class="text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                            <span>체크 초기화</span>
+                        </button>
+                        <button onclick="confirmDeleteSituation()" class="text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                            <span>상황 삭제</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Situation Pills -->
+                <div id="packing-situations-list" class="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                    <!-- Dynamic Pills -->
+                </div>
+
+                <!-- Packing Progress Bar for Active Situation -->
+                <div class="bg-teal-50/50 p-4 rounded-2xl border border-teal-100 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-teal-900 flex items-center gap-1.5">
+                            <span id="active-situation-title">상황</span> 짐싸기 진행률
+                        </span>
+                        <span id="packing-progress-pct" class="font-black text-teal-700">0%</span>
+                    </div>
+                    <div class="w-full bg-teal-100 rounded-full h-3 overflow-hidden">
+                        <div id="packing-progress-bar" class="bg-gradient-to-r from-teal-500 to-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-teal-700 font-medium">
+                        <span>총 <strong id="packing-total-count">0</strong>개 중 <strong id="packing-checked-count">0</strong>개 챙김</span>
+                        <span id="packing-remaining-text" class="text-teal-600">남은 준비물 0개</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Packing Items List (Grouped by Category) -->
+            <div id="packing-items-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Dynamic Category Cards -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Add / Edit Task Modal -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="task-modal-card">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <h3 id="modal-title" class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-regular fa-square-check text-slate-700"></i>
+                    할 일 추가하기
+                </h3>
+                <button onclick="closeTaskModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="task-form" onsubmit="handleTaskSubmit(event)" class="space-y-4">
+                <input type="hidden" id="task-id">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">해야 할 일 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="task-title-input" required placeholder="예: 분리수거하기, 장보기, 관리비 납부..." class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                </div>
+
+                <!-- Section/Owner Target -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">창 분류 (누구의 일인가요?) <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="target-type" value="wife" id="target-wife" class="peer hidden" checked>
+                            <div class="text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold peer-checked:bg-pink-50 peer-checked:border-pink-300 peer-checked:text-pink-600 transition-all">
+                                👩 아내
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="target-type" value="husband" id="target-husband" class="peer hidden">
+                            <div class="text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold peer-checked:bg-blue-50 peer-checked:border-blue-300 peer-checked:text-blue-600 transition-all">
+                                👨 남편
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="target-type" value="joint" id="target-joint" class="peer hidden">
+                            <div class="text-center py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold peer-checked:bg-emerald-50 peer-checked:border-emerald-300 peer-checked:text-emerald-600 transition-all">
+                                👩‍❤️‍👨 공동
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Due Date -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">기한 (마감일)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="task-dueDate-input" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                        <button type="button" onclick="setTodayDate()" class="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl whitespace-nowrap">오늘</button>
+                    </div>
+                </div>
+
+                <!-- Category & Priority -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">카테고리</label>
+                        <select id="task-category-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                            <option value="집안일">🧹 집안일</option>
+                            <option value="장보기">🛒 장보기</option>
+                            <option value="행정/금융">💳 행정/금융</option>
+                            <option value="육아/가족">👶 육아/가족</option>
+                            <option value="약속/행사">📅 약속/행사</option>
+                            <option value="기타">📌 기타</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">우선순위</label>
+                        <select id="task-priority-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                            <option value="medium">보통</option>
+                            <option value="high">🔥 높음 (중요)</option>
+                            <option value="low">🌱 낮음</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Memo -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">메모 (선택사항)</label>
+                    <textarea id="task-memo-input" rows="2" placeholder="상세한 내용이나 참고사항을 적어주세요." class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 resize-none"></textarea>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="pt-2 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">취소</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-md">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Recipe Modal -->
+    <div id="recipe-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="recipe-modal-card">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-utensils text-amber-500"></i>
+                    레시피 링크 등록
+                </h3>
+                <button onclick="closeRecipeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleRecipeSubmit(event)" class="space-y-4">
+                <!-- Recipe Target -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">식사 분류 <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="recipe-target" value="adult" id="recipe-adult" class="peer hidden" checked>
+                            <div class="text-center py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold peer-checked:bg-amber-50 peer-checked:border-amber-300 peer-checked:text-amber-700 transition-all">
+                                🍚 어른밥
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="recipe-target" value="baby" id="recipe-baby" class="peer hidden">
+                            <div class="text-center py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold peer-checked:bg-pink-50 peer-checked:border-pink-300 peer-checked:text-pink-700 transition-all">
+                                👶 아기밥
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Food Title -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">음식 이름 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="recipe-title-input" required placeholder="예: 백종원 김치찌개, 소고기 야채 진밥..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                </div>
+
+                <!-- Recipe URL -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">유튜브 또는 인스타그램 링크 <span class="text-rose-500">*</span></label>
+                    <input type="url" id="recipe-url-input" required placeholder="https://youtube.com/... 또는 https://instagram.com/..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                    <p class="text-[10px] text-slate-400 mt-1">유튜브/인스타그램에서 [공유] -> [링크 복사] 후 붙여넣어주세요.</p>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="closeRecipeModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">취소</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-md">등록하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Situation Modal -->
+    <div id="situation-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="situation-modal-card">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-folder-plus text-teal-600"></i>
+                    새 짐싸기 상황 추가
+                </h3>
+                <button onclick="closeSituationModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSituationSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">상황/목적 이름 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="situation-name-input" required placeholder="예: 🏝️ 제주도 3박 4일, ⛺ 계곡 캠핑, 👵 시댁 방문" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">기본 추천 프리셋 가져오기</label>
+                    <select id="situation-preset-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                        <option value="none">빈 목록으로 시작</option>
+                        <option value="baby_travel">👶 아기 동반 여행 프리셋 (필수용품 포함)</option>
+                        <option value="general_travel">✈️ 일반 여행/휴가 프리셋</option>
+                        <option value="camping">⛺ 캠핑/야외활동 프리셋</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="closeSituationModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">취소</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-md">생성하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Packing Item Modal -->
+    <div id="packing-item-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="packing-item-modal-card">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <h3 id="packing-item-modal-title" class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-box text-teal-600"></i>
+                    준비물 추가
+                </h3>
+                <button onclick="closePackingItemModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handlePackingItemSubmit(event)" class="space-y-4">
+                <input type="hidden" id="packing-item-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">준비물 이름 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="packing-item-name-input" required placeholder="예: 분유, 충전기, 아기 튜브, 상비약..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">카테고리</label>
+                        <input type="text" id="packing-item-category-select" list="packing-category-options" placeholder="카테고리 입력 또는 선택" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                        <datalist id="packing-category-options">
+                            <option value="👶 아기용품"></option>
+                            <option value="👕 의류/잡화"></option>
+                            <option value="🧼 세면/화장품"></option>
+                            <option value="🔌 전자기기"></option>
+                            <option value="💊 비상약/위생"></option>
+                            <option value="📄 서류/기타"></option>
+                        </datalist>
+                        <p class="text-[10px] text-slate-400 mt-1">목록에서 고르거나 원하는 카테고리명을 직접 입력할 수 있어요.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">담당자</label>
+                        <select id="packing-item-assignee-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                            <option value="joint">👩‍❤️‍👨 공동</option>
+                            <option value="wife">👩 아내</option>
+                            <option value="husband">👨 남편</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">수량 / 수량 관련 메모 (선택)</label>
+                    <input type="text" id="packing-item-memo-input" placeholder="예: 3벌, 1팩, 2개..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                </div>
+
+                <div class="pt-2 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="closePackingItemModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">취소</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-md">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Box -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Firebase Modular Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-api-key",
+            authDomain: "demo-app.firebaseapp.com",
+            projectId: "demo-app",
+            storageBucket: "demo-app.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'couple-checklist-default';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db = null;
+        let auth = null;
+
+        // Global State
+        window.appState = {
+            currentMainTab: 'checklist', // 'checklist', 'recipe', 'memo', 'packing'
+            role: 'wife', // 'wife' or 'husband'
+            tasks: [],
+            recipes: [],
+            memos: [],
+            packingSituations: [],
+            packingItems: [],
+            activeSituationId: null,
+            isFirebaseReady: false,
+            sortAscending: true
+        };
+
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                window.appState.isFirebaseReady = true;
+
+                // 1. Real-time Tasks Listener
+                const tasksRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_tasks');
+                onSnapshot(tasksRef, (snapshot) => {
+                    const loaded = [];
+                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                    window.appState.tasks = loaded;
+                    if (window.appState.currentMainTab === 'checklist') renderTasks();
+                }, (err) => console.warn("Tasks listener fallback mode active"));
+
+                // 2. Real-time Recipes Listener
+                const recipesRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_recipes');
+                onSnapshot(recipesRef, (snapshot) => {
+                    const loaded = [];
+                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                    window.appState.recipes = loaded;
+                    if (window.appState.currentMainTab === 'recipe') renderRecipes();
+                }, (err) => console.warn("Recipes listener fallback mode active"));
+
+                // 3. Real-time Memos Listener
+                const memosRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_memos');
+                onSnapshot(memosRef, (snapshot) => {
+                    const loaded = [];
+                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                    window.appState.memos = loaded;
+                    if (window.appState.currentMainTab === 'memo') renderMemos();
+                }, (err) => console.warn("Memos listener fallback mode active"));
+
+                // 4. Real-time Packing Situations Listener
+                const sitRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_situations');
+                onSnapshot(sitRef, (snapshot) => {
+                    const loaded = [];
+                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                    window.appState.packingSituations = loaded;
+                    if (!window.appState.activeSituationId && loaded.length > 0) {
+                        window.appState.activeSituationId = loaded[0].id;
+                    }
+                    if (window.appState.currentMainTab === 'packing') renderPacking();
+                }, (err) => console.warn("Situations listener fallback active"));
+
+                // 5. Real-time Packing Items Listener
+                const itemRef = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items');
+                onSnapshot(itemRef, (snapshot) => {
+                    const loaded = [];
+                    snapshot.forEach(docSnap => loaded.push({ id: docSnap.id, ...docSnap.data() }));
+                    window.appState.packingItems = loaded;
+                    if (window.appState.currentMainTab === 'packing') renderPacking();
+                }, (err) => console.warn("Packing items listener fallback active"));
+
+            } catch (err) {
+                console.warn("Firebase Init Error:", err);
+                loadDemoData();
+            }
+        }
+
+        // Load Default Demo Data if database is offline or empty
+        function loadDemoData() {
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+            if (window.appState.tasks.length === 0) {
+                window.appState.tasks = [
+                    { id: 'demo-1', title: '주말에 마트 가서 일주일 장보기', target: 'joint', category: '장보기', priority: 'high', dueDate: tomorrow, memo: '우유, 계란, 사과, 샐러드 채소', completed: false, createdBy: '아내', createdAt: Date.now() - 3600000 },
+                    { id: 'demo-2', title: '영양제 챙겨먹기', target: 'husband', category: '기타', priority: 'medium', dueDate: today, memo: '비타민C, 오메가3', completed: true, createdBy: '아내', createdAt: Date.now() - 7200000 },
+                    { id: 'demo-3', title: '베란다 청소 및 분리수거', target: 'husband', category: '집안일', priority: 'high', dueDate: today, memo: '', completed: false, createdBy: '남편', createdAt: Date.now() - 1800000 }
+                ];
+                renderTasks();
+            }
+
+            if (window.appState.recipes.length === 0) {
+                window.appState.recipes = [
+                    { id: 'rec-1', target: 'adult', title: '성시경 스팸계란볶음밥', url: 'https://www.youtube.com/watch?v=demo1', createdBy: '아내', createdAt: Date.now() - 86400000 },
+                    { id: 'rec-2', target: 'baby', title: '소고기 야채 진밥 이유식', url: 'https://www.instagram.com/p/demo2', createdBy: '남편', createdAt: Date.now() - 43200000 }
+                ];
+                renderRecipes();
+            }
+
+            if (window.appState.memos.length === 0) {
+                window.appState.memos = [
+                    { id: 'memo-1', text: '이번 주 토요일 오후 2시 시댁 방문 약속 있어요!', createdBy: '아내', createdAt: Date.now() - 10000000 },
+                    { id: 'memo-2', text: '택배 베란다에 넣어뒀어요~ 고마워요 ❤️', createdBy: '남편', createdAt: Date.now() - 3000000 }
+                ];
+                renderMemos();
+            }
+
+            if (window.appState.packingSituations.length === 0) {
+                window.appState.packingSituations = [
+                    { id: 'sit-1', name: '🏖️ 아기랑 2박3일 수영장 여행', createdAt: Date.now() - 10000 },
+                    { id: 'sit-2', name: '⛺ 주말 힐링 캠핑', createdAt: Date.now() - 5000 }
+                ];
+                window.appState.activeSituationId = 'sit-1';
+
+                window.appState.packingItems = [
+                    { id: 'pitem-1', situationId: 'sit-1', name: '아기 튜브 & 보밀', category: '👶 아기용품', assignee: 'joint', memo: '바람 넣는 펌프 포함', checked: true },
+                    { id: 'pitem-2', situationId: 'sit-1', name: '아기 분유 & 젖병', category: '👶 아기용품', assignee: 'wife', memo: '3일치 분량', checked: true },
+                    { id: 'pitem-3', situationId: 'sit-1', name: '아기 상비약 (해열제)', category: '💊 비상약/위생', assignee: 'wife', memo: '체온계 함께 챙기기', checked: false },
+                    { id: 'pitem-4', situationId: 'sit-1', name: '스마트폰 충전기', category: '🔌 전자기기', assignee: 'husband', memo: '멀티탭 1개', checked: false },
+                    { id: 'pitem-5', situationId: 'sit-1', name: '여벌옷 & 수영복', category: '👕 의류/잡화', assignee: 'joint', memo: '', checked: false },
+                    { id: 'pitem-6', situationId: 'sit-2', name: '텐트 & 타프', category: '📄 서류/기타', assignee: 'husband', memo: '망치 챙기기', checked: false }
+                ];
+                if (window.appState.currentMainTab === 'packing') renderPacking();
+            }
+        }
+
+        // Packing Situation Actions
+        window.savePackingSituation = async function(name, presetKey = 'none') {
+            const newSit = { name, createdAt: Date.now() };
+            let sitId = 'sit-' + Date.now();
+
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_situations');
+                    const docRef = await addDoc(ref, newSit);
+                    sitId = docRef.id;
+                } catch (e) {
+                    newSit.id = sitId;
+                    window.appState.packingSituations.push(newSit);
+                }
+            } else {
+                newSit.id = sitId;
+                window.appState.packingSituations.push(newSit);
+            }
+
+            window.appState.activeSituationId = sitId;
+
+            // Apply Presets if selected
+            if (presetKey !== 'none') {
+                const presetItems = getPresetItems(presetKey, sitId);
+                for (const item of presetItems) {
+                    await window.savePackingItem(item, true);
+                }
+            }
+
+            renderPacking();
+            showToast(`새 짐싸기 상황 "${name}"이(가) 추가되었습니다.`, "success");
+        };
+
+        window.deletePackingSituation = async function(sitId) {
+            if (!sitId) return;
+
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_situations', sitId);
+                    await deleteDoc(ref);
+                } catch (e) {
+                    window.appState.packingSituations = window.appState.packingSituations.filter(s => s.id !== sitId);
+                }
+            } else {
+                window.appState.packingSituations = window.appState.packingSituations.filter(s => s.id !== sitId);
+            }
+
+            // Remove items belonging to deleted situation
+            const itemsToDelete = window.appState.packingItems.filter(i => i.situationId === sitId);
+            for (const i of itemsToDelete) {
+                window.deletePackingItem(i.id, true);
+            }
+
+            window.appState.activeSituationId = window.appState.packingSituations.length > 0 ? window.appState.packingSituations[0].id : null;
+            renderPacking();
+            showToast("상황이 삭제되었습니다.", "info");
+        };
+
+        // Packing Item Actions
+        window.savePackingItem = async function(itemData, silent = false) {
+            const { id, situationId, name, category, assignee, memo, checked } = itemData;
+
+            if (id) {
+                if (window.appState.isFirebaseReady && db) {
+                    try {
+                        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', id);
+                        await updateDoc(ref, { name, category, assignee, memo });
+                    } catch (e) { fallbackUpdatePackingItem(id, { name, category, assignee, memo }); }
+                } else { fallbackUpdatePackingItem(id, { name, category, assignee, memo }); }
+            } else {
+                const newItem = { situationId, name, category, assignee: assignee || 'joint', memo: memo || '', checked: checked || false, createdAt: Date.now() };
+                if (window.appState.isFirebaseReady && db) {
+                    try {
+                        const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items');
+                        await addDoc(ref, newItem);
+                    } catch (e) { fallbackAddPackingItem(newItem); }
+                } else { fallbackAddPackingItem(newItem); }
+            }
+
+            renderPacking();
+            if (!silent) showToast("준비물이 저장되었습니다.", "success");
+        };
+
+        function fallbackAddPackingItem(newItem) {
+            newItem.id = 'pitem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5);
+            window.appState.packingItems.push(newItem);
+        }
+
+        function fallbackUpdatePackingItem(id, fields) {
+            const idx = window.appState.packingItems.findIndex(i => i.id === id);
+            if (idx !== -1) window.appState.packingItems[idx] = { ...window.appState.packingItems[idx], ...fields };
+        }
+
+        window.togglePackingItem = async function(itemId) {
+            const item = window.appState.packingItems.find(i => i.id === itemId);
+            if (!item) return;
+            const newChecked = !item.checked;
+
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', itemId);
+                    await updateDoc(ref, { checked: newChecked });
+                } catch (e) { item.checked = newChecked; renderPacking(); }
+            } else { item.checked = newChecked; renderPacking(); }
+        };
+
+        window.deletePackingItem = async function(itemId, silent = false) {
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', itemId);
+                    await deleteDoc(ref);
+                } catch (e) {
+                    window.appState.packingItems = window.appState.packingItems.filter(i => i.id !== itemId);
+                }
+            } else {
+                window.appState.packingItems = window.appState.packingItems.filter(i => i.id !== itemId);
+            }
+            renderPacking();
+            if (!silent) showToast("준비물이 삭제되었습니다.", "info");
+        };
+
+        window.resetPackingStatus = async function() {
+            const sitId = window.appState.activeSituationId;
+            if (!sitId) return;
+
+            const items = window.appState.packingItems.filter(i => i.situationId === sitId);
+            for (const item of items) {
+                if (item.checked) {
+                    if (window.appState.isFirebaseReady && db) {
+                        try {
+                            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_packing_items', item.id);
+                            await updateDoc(ref, { checked: false });
+                        } catch (e) { item.checked = false; }
+                    } else { item.checked = false; }
+                }
+            }
+            renderPacking();
+            showToast("모든 체크가 초기화되었습니다.", "info");
+        };
+
+        function getPresetItems(presetKey, sitId) {
+            if (presetKey === 'baby_travel') {
+                return [
+                    { situationId: sitId, name: '분유 & 젖병 & 젖병세정제', category: '👶 아기용품', assignee: 'wife', memo: '소독기/분유포트 확인' },
+                    { situationId: sitId, name: '기저귀 (여유있게)', category: '👶 아기용품', assignee: 'wife', memo: '하루 6~7장 기준' },
+                    { situationId: sitId, name: '아기 여벌옷 & 턱받이', category: '👶 아기용품', assignee: 'wife', memo: '' },
+                    { situationId: sitId, name: '아기 띠 또는 아기유모차', category: '👶 아기용품', assignee: 'husband', memo: '' },
+                    { situationId: sitId, name: '아기 물티슈 & 침받이', category: '👶 아기용품', assignee: 'joint', memo: '' },
+                    { situationId: sitId, name: '아기 해열제 & 체온계', category: '💊 비상약/위생', assignee: 'wife', memo: '비상용' },
+                    { situationId: sitId, name: '부부 옷 & 속옷/양말', category: '👕 의류/잡화', assignee: 'joint', memo: '' },
+                    { situationId: sitId, name: '충전기 & 보조배터리', category: '🔌 전자기기', assignee: 'husband', memo: '' }
+                ];
+            } else if (presetKey === 'general_travel') {
+                return [
+                    { situationId: sitId, name: '속옷 & 양말 & 여벌옷', category: '👕 의류/잡화', assignee: 'joint', memo: '' },
+                    { situationId: sitId, name: '세면도구 & 폼클렌징', category: '🧼 세면/화장품', assignee: 'joint', memo: '' },
+                    { situationId: sitId, name: '스킨케어 & 선크림', category: '🧼 세면/화장품', assignee: 'wife', memo: '' },
+                    { situationId: sitId, name: '스마트폰 충전기', category: '🔌 전자기기', assignee: 'husband', memo: '' },
+                    { situationId: sitId, name: '신분증 & 지갑/카드', category: '📄 서류/기타', assignee: 'joint', memo: '' }
+                ];
+            } else if (presetKey === 'camping') {
+                return [
+                    { situationId: sitId, name: '텐트 & 타프 & 페그/망치', category: '📄 서류/기타', assignee: 'husband', memo: '' },
+                    { situationId: sitId, name: '캠핑 의자 & 테이블', category: '📄 서류/기타', assignee: 'husband', memo: '' },
+                    { situationId: sitId, name: '랜턴 & 조명 충전기', category: '🔌 전자기기', assignee: 'husband', memo: '' },
+                    { situationId: sitId, name: '버너 & 부탄가스 & 코펠', category: '📄 서류/기타', assignee: 'joint', memo: '' },
+                    { situationId: sitId, name: '모기향 & 벌레퇴치스프레이', category: '💊 비상약/위생', assignee: 'joint', memo: '' }
+                ];
+            }
+            return [];
+        }
+
+        // Task CRUD Actions
+        window.saveTask = async function(taskData) {
+            const { id, title, target, dueDate, category, priority, memo } = taskData;
+            const createdByRole = '부부';
+
+            if (id) {
+                if (window.appState.isFirebaseReady && db) {
+                    try {
+                        const taskRef = doc(db, 'artifacts', appId, 'public', 'data', 'couple_tasks', id);
+                        await updateDoc(taskRef, { title, target, dueDate, category, priority, memo });
+                        showToast("할 일이 수정되었습니다.", "success");
+                    } catch (e) { fallbackUpdateTask(id, { title, target, dueDate, category, priority, memo }); }
+                } else { fallbackUpdateTask(id, { title, target, dueDate, category, priority, memo }); }
+            } else {
+                const newTask = { title, target, dueDate: dueDate || '', category: category || '집안일', priority: priority || 'medium', memo: memo || '', completed: false, createdBy: createdByRole, createdAt: Date.now() };
+                if (window.appState.isFirebaseReady && db) {
+                    try {
+                        const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_tasks');
+                        await addDoc(ref, newTask);
+                        showToast(`${targetName(target)} 창에 새 할 일이 추가되었습니다!`, "success");
+                    } catch (e) { fallbackAddTask(newTask); }
+                } else { fallbackAddTask(newTask); }
+            }
+        };
+
+        function fallbackAddTask(newTask) {
+            newTask.id = 'task-' + Date.now();
+            window.appState.tasks.unshift(newTask);
+            renderTasks();
+            showToast(`${targetName(newTask.target)} 창에 할 일이 추가되었습니다!`, "success");
+        }
+
+        function fallbackUpdateTask(id, fields) {
+            const idx = window.appState.tasks.findIndex(t => t.id === id);
+            if (idx !== -1) {
+                window.appState.tasks[idx] = { ...window.appState.tasks[idx], ...fields };
+                renderTasks();
+                showToast("할 일이 수정되었습니다.", "success");
+            }
+        }
+
+        window.toggleTaskComplete = async function(taskId) {
+            const task = window.appState.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            const newCompleted = !task.completed;
+
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_tasks', taskId);
+                    await updateDoc(ref, { completed: newCompleted });
+                } catch (e) { task.completed = newCompleted; renderTasks(); }
+            } else { task.completed = newCompleted; renderTasks(); }
+
+            if (newCompleted) showToast("👏 할 일을 완료했습니다!", "success");
+        };
+
+        window.deleteTask = async function(taskId) {
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_tasks', taskId);
+                    await deleteDoc(ref);
+                    showToast("삭제되었습니다.", "info");
+                } catch (e) {
+                    window.appState.tasks = window.appState.tasks.filter(t => t.id !== taskId);
+                    renderTasks();
+                }
+            } else {
+                window.appState.tasks = window.appState.tasks.filter(t => t.id !== taskId);
+                renderTasks();
+                showToast("삭제되었습니다.", "info");
+            }
+        };
+
+        // Recipe Actions
+        window.saveRecipe = async function(recipeData) {
+            const createdByRole = '부부';
+            const newRecipe = { ...recipeData, createdBy: createdByRole, createdAt: Date.now() };
+
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_recipes');
+                    await addDoc(ref, newRecipe);
+                    showToast("새 레시피가 등록되었습니다!", "success");
+                } catch (e) { fallbackAddRecipe(newRecipe); }
+            } else { fallbackAddRecipe(newRecipe); }
+        };
+
+        function fallbackAddRecipe(newRecipe) {
+            newRecipe.id = 'recipe-' + Date.now();
+            window.appState.recipes.unshift(newRecipe);
+            renderRecipes();
+            showToast("새 레시피가 등록되었습니다!", "success");
+        }
+
+        window.deleteRecipe = async function(recipeId) {
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_recipes', recipeId);
+                    await deleteDoc(ref);
+                    showToast("레시피가 삭제되었습니다.", "info");
+                } catch (e) {
+                    window.appState.recipes = window.appState.recipes.filter(r => r.id !== recipeId);
+                    renderRecipes();
+                }
+            } else {
+                window.appState.recipes = window.appState.recipes.filter(r => r.id !== recipeId);
+                renderRecipes();
+                showToast("레시피가 삭제되었습니다.", "info");
+            }
+        };
+
+        // Memo Actions
+        window.saveMemo = async function(memoText) {
+            const createdByRole = '부부';
+            const newMemo = { text: memoText, createdBy: createdByRole, createdAt: Date.now() };
+
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'couple_memos');
+                    await addDoc(ref, newMemo);
+                    showToast("메모가 등록되었습니다!", "success");
+                } catch (e) { fallbackAddMemo(newMemo); }
+            } else { fallbackAddMemo(newMemo); }
+        };
+
+        function fallbackAddMemo(newMemo) {
+            newMemo.id = 'memo-' + Date.now();
+            window.appState.memos.unshift(newMemo);
+            renderMemos();
+            showToast("메모가 등록되었습니다!", "success");
+        }
+
+        window.deleteMemo = async function(memoId) {
+            if (window.appState.isFirebaseReady && db) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'couple_memos', memoId);
+                    await deleteDoc(ref);
+                    showToast("메모가 삭제되었습니다.", "info");
+                } catch (e) {
+                    window.appState.memos = window.appState.memos.filter(m => m.id !== memoId);
+                    renderMemos();
+                }
+            } else {
+                window.appState.memos = window.appState.memos.filter(m => m.id !== memoId);
+                renderMemos();
+                showToast("메모가 삭제되었습니다.", "info");
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+        });
+    </script>
+
+    <script>
+        // Main Tab Switcher
+        function switchMainTab(tabName) {
+            window.appState.currentMainTab = tabName;
+
+            // Views
+            document.getElementById('view-checklist').classList.toggle('hidden', tabName !== 'checklist');
+            document.getElementById('view-recipe').classList.toggle('hidden', tabName !== 'recipe');
+            document.getElementById('view-memo').classList.toggle('hidden', tabName !== 'memo');
+            document.getElementById('view-packing').classList.toggle('hidden', tabName !== 'packing');
+
+            // Nav Tabs Highlight
+            const tabs = ['checklist', 'recipe', 'memo', 'packing'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`nav-tab-${t}`);
+                if (!btn) return;
+                if (t === tabName) {
+                    btn.className = "flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm bg-white text-slate-900";
+                } else {
+                    btn.className = "flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900";
+                }
+            });
+
+            if (tabName === 'checklist') renderTasks();
+            if (tabName === 'recipe') renderRecipes();
+            if (tabName === 'memo') renderMemos();
+            if (tabName === 'packing') renderPacking();
+        }
+
+        // Packing View Render
+        function renderPacking() {
+            const situations = window.appState.packingSituations || [];
+            const activeId = window.appState.activeSituationId;
+
+            // Render Situation Pills
+            const sitContainer = document.getElementById('packing-situations-list');
+            if (sitContainer) {
+                if (situations.length === 0) {
+                    sitContainer.innerHTML = `<span class="text-xs text-slate-400 py-1">등록된 상황이 없습니다. [새 상황 만들기]를 눌러 시작하세요!</span>`;
+                } else {
+                    sitContainer.innerHTML = situations.map(s => {
+                        const isActive = s.id === activeId;
+                        const btnStyle = isActive ? 'bg-teal-600 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium';
+                        return `
+                            <button onclick="switchSituation('${s.id}')" class="px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 ${btnStyle}">
+                                <span>${escapeHtml(s.name)}</span>
+                            </button>
+                        `;
+                    }).join('');
+                }
+            }
+
+            const activeSit = situations.find(s => s.id === activeId);
+            const activeTitle = activeSit ? activeSit.name : '상황 미선택';
+            document.getElementById('active-situation-title').innerText = activeTitle;
+
+            // Filter items for current active situation
+            const currentItems = (window.appState.packingItems || []).filter(i => i.situationId === activeId);
+            const total = currentItems.length;
+            const checked = currentItems.filter(i => i.checked).length;
+            const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+            document.getElementById('packing-total-count').innerText = total;
+            document.getElementById('packing-checked-count').innerText = checked;
+            document.getElementById('packing-remaining-text').innerText = `남은 준비물 ${total - checked}개`;
+            document.getElementById('packing-progress-pct').innerText = `${pct}%`;
+            document.getElementById('packing-progress-bar').style.width = `${pct}%`;
+
+            // Group by category: show default categories first, then any custom categories created by the couple
+            const defaultCategories = ['👶 아기용품', '👕 의류/잡화', '🧼 세면/화장품', '🔌 전자기기', '💊 비상약/위생', '📄 서류/기타'];
+            const customCategories = [...new Set(currentItems
+                .map(i => (i.category || '').trim())
+                .filter(cat => cat && !defaultCategories.includes(cat))
+            )];
+            const categories = [...defaultCategories, ...customCategories];
+            const container = document.getElementById('packing-items-container');
+            if (!container) return;
+
+            if (total === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white rounded-3xl p-8 border border-slate-200 text-center space-y-3">
+                        <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                            <i class="fa-solid fa-box-open"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm">준비물이 아직 없습니다.</h4>
+                        <p class="text-xs text-slate-400">상단의 [준비물 추가] 버튼을 눌러 이 여행/상황에 필요한 물건을 채워보세요!</p>
+                        <button onclick="openPackingItemModal()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-transform active:scale-95">
+                            + 준비물 등록하기
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = categories.map(cat => {
+                const catItems = currentItems.filter(i => (i.category || '📄 서류/기타') === cat);
+                if (catItems.length === 0) return '';
+
+                const catChecked = catItems.filter(i => i.checked).length;
+
+                return `
+                    <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+                                <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                    <span>${escapeHtml(cat)}</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">(${catChecked}/${catItems.length})</span>
+                                </h4>
+                                <button onclick='openPackingItemModal(${JSON.stringify(cat)})' class="text-[10px] text-teal-600 hover:underline font-bold">
+                                    + 추가
+                                </button>
+                            </div>
+
+                            <div class="space-y-2">
+                                ${catItems.map(item => {
+                                    const isDone = item.checked;
+                                    const assigneeTag = item.assignee === 'wife' ? '👩 아내' : item.assignee === 'husband' ? '👨 남편' : '👩‍❤️‍👨 공동';
+                                    const assigneeClass = item.assignee === 'wife' ? 'bg-pink-50 text-pink-600 border-pink-200' : item.assignee === 'husband' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200';
+
+                                    return `
+                                        <div class="p-2.5 rounded-xl border border-slate-100 ${isDone ? 'bg-slate-50' : 'bg-white hover:border-teal-200'} flex items-start gap-2.5 transition-all group">
+                                            <button onclick="togglePackingItem('${item.id}')" class="mt-0.5 shrink-0 w-4 h-4 rounded-md border ${isDone ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 hover:border-teal-500'} flex items-center justify-center transition-all">
+                                                ${isDone ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+                                            </button>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center justify-between gap-1">
+                                                    <p class="text-xs font-semibold text-slate-800 break-words ${isDone ? 'line-through text-slate-400' : ''}">
+                                                        ${escapeHtml(item.name)}
+                                                    </p>
+                                                    <div class="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100">
+                                                        <button onclick="openEditPackingItemModal('${item.id}')" class="text-slate-300 hover:text-slate-600 p-0.5">
+                                                            <i class="fa-solid fa-pen text-[10px]"></i>
+                                                        </button>
+                                                        <button onclick="confirmDeletePackingItem('${item.id}')" class="text-slate-300 hover:text-rose-500 p-0.5">
+                                                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    <span class="px-1.5 py-0.5 text-[9px] font-medium border rounded-md ${assigneeClass}">${assigneeTag}</span>
+                                                    ${item.memo ? `<span class="text-[10px] text-slate-400 line-clamp-1"><i class="fa-regular fa-note-sticky mr-0.5"></i>${escapeHtml(item.memo)}</span>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchSituation(sitId) {
+            window.appState.activeSituationId = sitId;
+            renderPacking();
+        }
+
+        // Situation Modal Handlers
+        function openSituationModal() {
+            document.getElementById('situation-name-input').value = '';
+            document.getElementById('situation-preset-select').value = 'none';
+
+            const modal = document.getElementById('situation-modal');
+            const card = document.getElementById('situation-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function closeSituationModal() {
+            const modal = document.getElementById('situation-modal');
+            const card = document.getElementById('situation-modal-card');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        }
+
+        function handleSituationSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('situation-name-input').value.trim();
+            const preset = document.getElementById('situation-preset-select').value;
+            if (!name) return;
+
+            window.savePackingSituation(name, preset);
+            closeSituationModal();
+        }
+
+        function confirmDeleteSituation() {
+            const activeId = window.appState.activeSituationId;
+            if (!activeId) return;
+            const sit = window.appState.packingSituations.find(s => s.id === activeId);
+            if (confirm(`정말 "${sit ? sit.name : '이 상황'}" 및 포함된 준비물을 삭제하시겠습니까?`)) {
+                window.deletePackingSituation(activeId);
+            }
+        }
+
+        // Packing Item Modal Handlers
+        function openPackingItemModal(defaultCategory = '👶 아기용품') {
+            if (!window.appState.activeSituationId) {
+                showToast("먼저 [새 상황 만들기]를 통해 짐싸기 상황을 등록해주세요!", "rose");
+                return;
+            }
+
+            document.getElementById('packing-item-id').value = '';
+            document.getElementById('packing-item-name-input').value = '';
+            document.getElementById('packing-item-category-select').value = defaultCategory;
+            document.getElementById('packing-item-assignee-select').value = 'joint';
+            document.getElementById('packing-item-memo-input').value = '';
+            document.getElementById('packing-item-modal-title').innerHTML = `<i class="fa-solid fa-box text-teal-600"></i> 준비물 추가`;
+
+            const modal = document.getElementById('packing-item-modal');
+            const card = document.getElementById('packing-item-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function openEditPackingItemModal(itemId) {
+            const item = window.appState.packingItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('packing-item-id').value = item.id;
+            document.getElementById('packing-item-name-input').value = item.name;
+            document.getElementById('packing-item-category-select').value = item.category || '👶 아기용품';
+            document.getElementById('packing-item-assignee-select').value = item.assignee || 'joint';
+            document.getElementById('packing-item-memo-input').value = item.memo || '';
+            document.getElementById('packing-item-modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-teal-600"></i> 준비물 수정`;
+
+            const modal = document.getElementById('packing-item-modal');
+            const card = document.getElementById('packing-item-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function closePackingItemModal() {
+            const modal = document.getElementById('packing-item-modal');
+            const card = document.getElementById('packing-item-modal-card');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        }
+
+        function handlePackingItemSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('packing-item-id').value;
+            const name = document.getElementById('packing-item-name-input').value.trim();
+            const category = document.getElementById('packing-item-category-select').value.trim() || '📄 서류/기타';
+            const assignee = document.getElementById('packing-item-assignee-select').value;
+            const memo = document.getElementById('packing-item-memo-input').value.trim();
+
+            if (!name) return;
+
+            window.savePackingItem({
+                id,
+                situationId: window.appState.activeSituationId,
+                name,
+                category,
+                assignee,
+                memo
+            });
+            closePackingItemModal();
+        }
+
+        function confirmDeletePackingItem(itemId) {
+            if (confirm("이 준비물을 삭제하시겠습니까?")) {
+                window.deletePackingItem(itemId);
+            }
+        }
+
+        function targetName(target) {
+            if (target === 'wife') return '아내';
+            if (target === 'husband') return '남편';
+            return '공동 과제';
+        }
+
+        // Sort by deadline
+        function sortTasksByDeadline() {
+            window.appState.sortAscending = !window.appState.sortAscending;
+            renderTasks();
+            showToast(window.appState.sortAscending ? "기한이 임박한 순 정렬" : "기한 여유순 정렬", "info");
+        }
+
+        // D-Day Badge Helper
+        function getDDayBadgeHTML(dueDate) {
+            if (!dueDate) return '';
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const targetDate = new Date(dueDate);
+            targetDate.setHours(0,0,0,0);
+
+            const diffTime = targetDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return `<span class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> D+${Math.abs(diffDays)}</span>`;
+            } else if (diffDays === 0) {
+                return `<span class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 animate-pulse"><i class="fa-regular fa-clock"></i> 오늘 마감</span>`;
+            } else if (diffDays === 1) {
+                return `<span class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-orange-100 text-orange-700 border border-orange-200">내일 마감</span>`;
+            } else {
+                return `<span class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-100 text-slate-600 border border-slate-200">D-${diffDays}</span>`;
+            }
+        }
+
+        function getPriorityBadge(priority) {
+            if (priority === 'high') {
+                return `<span class="text-[10px] font-bold text-rose-500 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">🔥 중요</span>`;
+            } else if (priority === 'low') {
+                return `<span class="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">🌱 낮음</span>`;
+            }
+            return '';
+        }
+
+        // Task Rendering Main
+        function renderTasks() {
+            const tasks = window.appState.tasks || [];
+            const hideCompleted = document.getElementById('hide-completed-check')?.checked || false;
+
+            let filtered = tasks.filter(t => hideCompleted ? !t.completed : true);
+
+            filtered.sort((a, b) => {
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                const dateA = new Date(a.dueDate).getTime();
+                const dateB = new Date(b.dueDate).getTime();
+                return window.appState.sortAscending ? dateA - dateB : dateB - dateA;
+            });
+
+            const wifeTasks = filtered.filter(t => t.target === 'wife');
+            const husbandTasks = filtered.filter(t => t.target === 'husband');
+            const jointTasks = filtered.filter(t => t.target === 'joint');
+
+            renderColumn('wife-task-list', wifeTasks, 'wife');
+            renderColumn('husband-task-list', husbandTasks, 'husband');
+            renderColumn('joint-task-list', jointTasks, 'joint');
+
+            updateDashboardStats(tasks);
+        }
+
+        function renderColumn(elementId, taskList, type) {
+            const container = document.getElementById(elementId);
+            if (!container) return;
+
+            if (taskList.length === 0) {
+                container.innerHTML = `
+                    <div class="h-36 flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40 text-slate-400 space-y-2">
+                        <i class="fa-regular fa-folder-open text-xl"></i>
+                        <p class="text-xs font-medium">등록된 할 일이 없습니다.</p>
+                        <button onclick="openTaskModal('${type}')" class="text-xs font-bold text-slate-600 hover:text-slate-900 underline">
+                            + 할 일 추가하기
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = taskList.map(task => {
+                const isDone = task.completed;
+                const dDayBadge = getDDayBadgeHTML(task.dueDate);
+                const priorityBadge = getPriorityBadge(task.priority);
+                const accentBg = isDone ? 'bg-slate-50 opacity-60' : 'bg-white';
+
+                return `
+                    <div class="task-card ${accentBg} border border-slate-200 rounded-xl sm:rounded-2xl p-2 sm:p-3.5 shadow-sm space-y-2 relative group">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded-md border border-slate-200">
+                                    ${task.category || '집안일'}
+                                </span>
+                                ${priorityBadge}
+                                ${dDayBadge}
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="openEditTaskModal('${task.id}')" class="w-6 h-6 rounded-md hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors">
+                                    <i class="fa-solid fa-pen text-[11px]"></i>
+                                </button>
+                                <button onclick="confirmDeleteTask('${task.id}')" class="w-6 h-6 rounded-md hover:bg-rose-50 flex items-center justify-center text-slate-400 hover:text-rose-600 transition-colors">
+                                    <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-3 pt-1">
+                            <button onclick="toggleTaskComplete('${task.id}')" class="mt-0.5 shrink-0 w-5 h-5 rounded-lg border-2 ${isDone ? 'bg-slate-800 border-slate-800 text-white' : 'border-slate-300 hover:border-slate-500'} flex items-center justify-center transition-all">
+                                ${isDone ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </button>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs sm:text-sm font-semibold text-slate-800 leading-snug break-words ${isDone ? 'line-through text-slate-400 font-normal' : ''}">
+                                    ${escapeHtml(task.title)}
+                                </p>
+                                ${task.memo ? `
+                                    <p class="text-xs text-slate-500 mt-1 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                        <i class="fa-regular fa-note-sticky text-[10px] text-slate-400 mr-1"></i>${escapeHtml(task.memo)}
+                                    </p>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div class="pt-1 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100">
+                            <span><i class="fa-regular fa-user"></i> 작성: <strong class="text-slate-600">${task.createdBy || '부부'}</strong></span>
+                            ${task.dueDate ? `<span class="text-slate-500 font-medium"><i class="fa-regular fa-calendar-check mr-0.5"></i> ${task.dueDate} 까지</span>` : '<span class="text-slate-300">기한 없음</span>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateDashboardStats(tasks) {
+            const wifeTasks = tasks.filter(t => t.target === 'wife');
+            const husbandTasks = tasks.filter(t => t.target === 'husband');
+            const jointTasks = tasks.filter(t => t.target === 'joint');
+
+            document.getElementById('wife-count-badge').innerText = wifeTasks.filter(t => !t.completed).length;
+            document.getElementById('husband-count-badge').innerText = husbandTasks.filter(t => !t.completed).length;
+            document.getElementById('joint-count-badge').innerText = jointTasks.filter(t => !t.completed).length;
+        }
+
+        // Recipe Logic
+        function renderRecipes() {
+            const recipes = window.appState.recipes || [];
+            const adultList = recipes.filter(r => r.target === 'adult');
+            const babyList = recipes.filter(r => r.target === 'baby');
+
+            renderRecipeCategory('adult-recipe-list', adultList, 'adult');
+            renderRecipeCategory('baby-recipe-list', babyList, 'baby');
+        }
+
+        function renderRecipeCategory(containerId, list, type) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="h-32 flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-slate-400 space-y-1">
+                        <i class="fa-solid fa-utensils text-lg"></i>
+                        <p class="text-xs">등록된 ${type === 'adult' ? '어른밥' : '아기밥'} 레시피가 없습니다.</p>
+                        <button onclick="openRecipeModal('${type}')" class="text-xs font-bold text-amber-600 underline">+ 레시피 추가</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = list.map(recipe => {
+                const isYoutube = recipe.url.includes('youtube.com') || recipe.url.includes('youtu.be');
+                const isInstagram = recipe.url.includes('instagram.com');
+
+                let iconClass = "fa-solid fa-link text-slate-400";
+                let badgeText = "웹 링크";
+                let badgeBg = "bg-slate-100 text-slate-600";
+
+                if (isYoutube) {
+                    iconClass = "fa-brands fa-youtube text-red-500 text-lg";
+                    badgeText = "YouTube";
+                    badgeBg = "bg-red-50 text-red-600 border border-red-200";
+                } else if (isInstagram) {
+                    iconClass = "fa-brands fa-instagram text-pink-500 text-lg";
+                    badgeText = "Instagram";
+                    badgeBg = "bg-pink-50 text-pink-600 border border-pink-200";
+                }
+
+                return `
+                    <div class="recipe-card bg-slate-50 border border-slate-200 rounded-2xl p-3.5 shadow-sm space-y-2 flex flex-col justify-between">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <i class="${iconClass}"></i>
+                                <span class="font-bold text-sm text-slate-800 break-all">${escapeHtml(recipe.title)}</span>
+                            </div>
+                            <button onclick="confirmDeleteRecipe('${recipe.id}')" class="text-slate-300 hover:text-rose-500 text-xs p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[10px]">
+                            <span class="px-2 py-0.5 rounded-md ${badgeBg} font-semibold">${badgeText}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-slate-400">작성: ${recipe.createdBy || '부부'}</span>
+                                <a href="${escapeHtml(recipe.url)}" target="_blank" rel="noopener noreferrer" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1 rounded-lg flex items-center gap-1 shadow-sm transition-transform active:scale-95">
+                                    <span>보기</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Memo Logic
+        function renderMemos() {
+            const memos = window.appState.memos || [];
+            const container = document.getElementById('memo-feed-list');
+            if (!container) return;
+
+            if (memos.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-8 border border-slate-200 text-center space-y-2 text-slate-400">
+                        <i class="fa-regular fa-comments text-3xl"></i>
+                        <p class="text-xs font-medium">아직 등록된 부부 메모가 없습니다.</p>
+                        <p class="text-[11px] text-slate-300">위 입력을 통해 첫 메모를 작성해보세요!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort memos by newest first
+            const sorted = [...memos].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            container.innerHTML = sorted.map(memo => {
+                const isWife = memo.createdBy === '아내';
+                const bgStyle = isWife ? 'bg-pink-50/60 border-pink-100' : 'bg-blue-50/60 border-blue-100';
+                const tagColor = isWife ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700';
+
+                const timeStr = memo.createdAt ? new Date(memo.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+                return `
+                    <div class="memo-card ${bgStyle} border rounded-2xl p-4 shadow-sm flex items-start gap-3 relative group">
+                        <span class="w-8 h-8 rounded-full ${tagColor} flex items-center justify-center font-bold shrink-0 text-sm shadow-sm">
+                            ${isWife ? '👩' : '👨'}
+                        </span>
+                        <div class="flex-1 min-w-0 space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-800">${memo.createdBy || '부부'}</span>
+                                <span class="text-[10px] text-slate-400">${timeStr}</span>
+                            </div>
+                            <p class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed break-words">${escapeHtml(memo.text)}</p>
+                        </div>
+                        <button onclick="confirmDeleteMemo('${memo.id}')" class="text-slate-300 hover:text-rose-500 p-1 opacity-60 hover:opacity-100 transition-opacity">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleMemoSubmit(e) {
+            e.preventDefault();
+            const textInput = document.getElementById('memo-input-text');
+            const text = textInput.value.trim();
+            if (!text) return;
+
+            window.saveMemo(text);
+            textInput.value = '';
+        }
+
+        // Modals Logic
+        function openTaskModal(defaultTarget = null) {
+            document.getElementById('task-id').value = '';
+            document.getElementById('task-title-input').value = '';
+            document.getElementById('task-dueDate-input').value = new Date().toISOString().split('T')[0];
+            document.getElementById('task-category-select').value = '집안일';
+            document.getElementById('task-priority-select').value = 'medium';
+            document.getElementById('task-memo-input').value = '';
+            document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-plus text-slate-700"></i> 할 일 추가하기`;
+
+            const target = defaultTarget || window.appState.role || 'wife';
+            if (target === 'wife') document.getElementById('target-wife').checked = true;
+            else if (target === 'husband') document.getElementById('target-husband').checked = true;
+            else document.getElementById('target-joint').checked = true;
+
+            const modal = document.getElementById('task-modal');
+            const card = document.getElementById('task-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function openEditTaskModal(taskId) {
+            const task = window.appState.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('task-id').value = task.id;
+            document.getElementById('task-title-input').value = task.title;
+            document.getElementById('task-dueDate-input').value = task.dueDate || '';
+            document.getElementById('task-category-select').value = task.category || '집안일';
+            document.getElementById('task-priority-select').value = task.priority || 'medium';
+            document.getElementById('task-memo-input').value = task.memo || '';
+            document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-slate-700"></i> 할 일 수정하기`;
+
+            if (task.target === 'wife') document.getElementById('target-wife').checked = true;
+            else if (task.target === 'husband') document.getElementById('target-husband').checked = true;
+            else document.getElementById('target-joint').checked = true;
+
+            const modal = document.getElementById('task-modal');
+            const card = document.getElementById('task-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function closeTaskModal() {
+            const modal = document.getElementById('task-modal');
+            const card = document.getElementById('task-modal-card');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        }
+
+        function handleTaskSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('task-id').value;
+            const title = document.getElementById('task-title-input').value.trim();
+            const target = document.querySelector('input[name="target-type"]:checked').value;
+            const dueDate = document.getElementById('task-dueDate-input').value;
+            const category = document.getElementById('task-category-select').value;
+            const priority = document.getElementById('task-priority-select').value;
+            const memo = document.getElementById('task-memo-input').value.trim();
+
+            if (!title) return;
+            window.saveTask({ id, title, target, dueDate, category, priority, memo });
+            closeTaskModal();
+        }
+
+        function confirmDeleteTask(taskId) {
+            if (confirm("정말 이 할 일을 삭제하시겠습니까?")) {
+                window.deleteTask(taskId);
+            }
+        }
+
+        // Recipe Modal Handlers
+        function openRecipeModal(defaultTarget = 'adult') {
+            document.getElementById('recipe-title-input').value = '';
+            document.getElementById('recipe-url-input').value = '';
+
+            if (defaultTarget === 'baby') document.getElementById('recipe-baby').checked = true;
+            else document.getElementById('recipe-adult').checked = true;
+
+            const modal = document.getElementById('recipe-modal');
+            const card = document.getElementById('recipe-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function closeRecipeModal() {
+            const modal = document.getElementById('recipe-modal');
+            const card = document.getElementById('recipe-modal-card');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { modal.classList.add('hidden'); }, 150);
+        }
+
+        function handleRecipeSubmit(e) {
+            e.preventDefault();
+            const target = document.querySelector('input[name="recipe-target"]:checked').value;
+            const title = document.getElementById('recipe-title-input').value.trim();
+            const url = document.getElementById('recipe-url-input').value.trim();
+
+            if (!title || !url) return;
+
+            window.saveRecipe({ target, title, url });
+            closeRecipeModal();
+        }
+
+        function confirmDeleteRecipe(recipeId) {
+            if (confirm("레시피를 삭제하시겠습니까?")) {
+                window.deleteRecipe(recipeId);
+            }
+        }
+
+        function confirmDeleteMemo(memoId) {
+            if (confirm("메모를 삭제하시겠습니까?")) {
+                window.deleteMemo(memoId);
+            }
+        }
+
+        function setTodayDate() {
+            document.getElementById('task-dueDate-input').value = new Date().toISOString().split('T')[0];
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let bg = 'bg-slate-900 text-white';
+            if (type === 'success') bg = 'bg-emerald-600 text-white';
+            if (type === 'rose') bg = 'bg-rose-600 text-white';
+
+            toast.className = `${bg} px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${message}`;
+
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-y-4', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
