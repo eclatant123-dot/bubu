@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -92,15 +93,15 @@
             <div class="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full md:w-auto justify-center flex-wrap gap-1">
                 <button id="nav-tab-checklist" onclick="switchMainTab('checklist')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm bg-white text-slate-900">
                     <i class="fa-solid fa-list-check text-rose-500"></i>
-                    <span>체크리스트</span>
+                    <span>할일</span>
                 </button>
                 <button id="nav-tab-recipe" onclick="switchMainTab('recipe')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
                     <i class="fa-solid fa-utensils text-amber-500"></i>
-                    <span>레시피 모음</span>
+                    <span>레시피</span>
                 </button>
                 <button id="nav-tab-memo" onclick="switchMainTab('memo')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
                     <i class="fa-solid fa-sticky-note text-blue-500"></i>
-                    <span>부부 메모</span>
+                    <span>메모</span>
                 </button>
                 <button id="nav-tab-packing" onclick="switchMainTab('packing')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
                     <i class="fa-solid fa-suitcase-rolling text-emerald-500"></i>
@@ -117,29 +118,6 @@
         <!-- ==================== TAB 1: CHECKLIST VIEW ==================== -->
         <section id="view-checklist" class="space-y-6">
             
-            <!-- Filter Controls -->
-            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
-                <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                    <i class="fa-solid fa-sliders text-slate-400"></i>
-                    <span>할 일 목록 보기</span>
-                </div>
-                <div class="flex items-center space-x-3 text-xs">
-                    <label class="flex items-center gap-1.5 cursor-pointer text-slate-600 select-none">
-                        <input type="checkbox" id="hide-completed-check" onchange="renderTasks()" class="rounded border-slate-300 text-slate-800 focus:ring-slate-500">
-                        <span>완료된 항목 숨기기</span>
-                    </label>
-                    <div class="h-4 w-[1px] bg-slate-200"></div>
-                    <button onclick="sortTasksByDeadline()" class="text-xs text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg">
-                        <i class="fa-solid fa-arrow-down-short-wide text-slate-400"></i>
-                        <span>기한순 정렬</span>
-                    </button>
-                    <button onclick="openTaskModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>새 할 일</span>
-                    </button>
-                </div>
-            </div>
-
             <!-- Columns Layout: Top Left(Wife), Top Right(Husband), Bottom Full Width(Joint) -->
             <div class="space-y-6">
                 <!-- Top Row: Wife & Husband Split -->
@@ -215,20 +193,6 @@
 
         <!-- ==================== TAB 2: RECIPE VIEW ==================== -->
         <section id="view-recipe" class="hidden space-y-6">
-            <!-- Recipe Header Bar -->
-            <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 rounded-3xl p-6 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div class="space-y-1 text-center sm:text-left">
-                    <h2 class="text-2xl font-black flex items-center justify-center sm:justify-start gap-2">
-                        <span>🍳 부부 레시피 북</span>
-                    </h2>
-                    <p class="text-xs text-amber-100">유튜브, 인스타그램에서 찾은 어른밥/아기밥 맛집 레시피 링크를 모아두세요!</p>
-                </div>
-                <button onclick="openRecipeModal()" class="bg-white text-amber-600 hover:bg-amber-50 px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md transition-all flex items-center gap-2 shrink-0 active:scale-95">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>레시피 링크 등록</span>
-                </button>
-            </div>
-
             <!-- Adult & Baby Food Columns -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 
@@ -434,27 +398,14 @@
                     </div>
                 </div>
 
-                <!-- Category & Priority -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">카테고리</label>
-                        <select id="task-category-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
-                            <option value="집안일">🧹 집안일</option>
-                            <option value="장보기">🛒 장보기</option>
-                            <option value="행정/금융">💳 행정/금융</option>
-                            <option value="육아/가족">👶 육아/가족</option>
-                            <option value="약속/행사">📅 약속/행사</option>
-                            <option value="기타">📌 기타</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">우선순위</label>
-                        <select id="task-priority-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
-                            <option value="medium">보통</option>
-                            <option value="high">🔥 높음 (중요)</option>
-                            <option value="low">🌱 낮음</option>
-                        </select>
-                    </div>
+                <!-- Priority -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">우선순위</label>
+                    <select id="task-priority-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800">
+                        <option value="medium">보통</option>
+                        <option value="high">🔥 높음 (중요)</option>
+                        <option value="low">🌱 낮음</option>
+                    </select>
                 </div>
 
                 <!-- Memo -->
@@ -934,13 +885,13 @@
         window.saveTask = async function(taskData) {
             if (!requireFirebase('할 일')) return false;
 
-            const { id, title, target, dueDate, category, priority, memo } = taskData;
+            const { id, title, target, dueDate, priority, memo } = taskData;
             const createdByRole = '부부';
 
             try {
                 if (id) {
                     await updateDoc(documentRef('couple_tasks', id), {
-                        title, target, dueDate, category, priority, memo
+                        title, target, dueDate, priority, memo
                     });
                     showToast('할 일이 수정되었습니다.', 'success');
                 } else {
@@ -948,7 +899,6 @@
                         title,
                         target,
                         dueDate: dueDate || '',
-                        category: category || '집안일',
                         priority: priority || 'medium',
                         memo: memo || '',
                         completed: false,
@@ -1417,9 +1367,7 @@
                     <div class="task-card ${accentBg} border border-slate-200 rounded-xl sm:rounded-2xl p-2 sm:p-3.5 shadow-sm space-y-2 relative group">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded-md border border-slate-200">
-                                    ${task.category || '집안일'}
-                                </span>
+                                ${task.category ? `<span class="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded-md border border-slate-200">${task.category}</span>` : ''}
                                 ${priorityBadge}
                                 ${dDayBadge}
                             </div>
@@ -1600,7 +1548,6 @@
             document.getElementById('task-id').value = '';
             document.getElementById('task-title-input').value = '';
             document.getElementById('task-dueDate-input').value = new Date().toISOString().split('T')[0];
-            document.getElementById('task-category-select').value = '집안일';
             document.getElementById('task-priority-select').value = 'medium';
             document.getElementById('task-memo-input').value = '';
             document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-plus text-slate-700"></i> 할 일 추가하기`;
@@ -1623,7 +1570,6 @@
             document.getElementById('task-id').value = task.id;
             document.getElementById('task-title-input').value = task.title;
             document.getElementById('task-dueDate-input').value = task.dueDate || '';
-            document.getElementById('task-category-select').value = task.category || '집안일';
             document.getElementById('task-priority-select').value = task.priority || 'medium';
             document.getElementById('task-memo-input').value = task.memo || '';
             document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-slate-700"></i> 할 일 수정하기`;
@@ -1652,12 +1598,11 @@
             const title = document.getElementById('task-title-input').value.trim();
             const target = document.querySelector('input[name="target-type"]:checked').value;
             const dueDate = document.getElementById('task-dueDate-input').value;
-            const category = document.getElementById('task-category-select').value;
             const priority = document.getElementById('task-priority-select').value;
             const memo = document.getElementById('task-memo-input').value.trim();
 
             if (!title) return;
-            const saved = await window.saveTask({ id, title, target, dueDate, category, priority, memo });
+            const saved = await window.saveTask({ id, title, target, dueDate, priority, memo });
             if (saved) closeTaskModal();
         }
 
