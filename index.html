@@ -570,6 +570,7 @@
             packingSituations: [],
             packingItems: [],
             activeSituationId: null,
+            packingOrderEditing: false,
             isFirebaseReady: false,
             firebaseError: null,
             sortAscending: true
@@ -737,7 +738,8 @@
 
                 if (presetKey !== 'none') {
                     const presetItems = getPresetItems(presetKey, sitId);
-                    for (const item of presetItems) {
+                    for (let index = 0; index < presetItems.length; index++) {
+                        const item = { ...presetItems[index], order: index };
                         const ok = await window.savePackingItem(item, true);
                         if (!ok) {
                             showToast('상황은 저장됐지만 일부 기본 준비물을 저장하지 못했습니다.', 'rose');
@@ -775,7 +777,7 @@
         window.savePackingItem = async function(itemData, silent = false) {
             if (!requireFirebase('준비물')) return false;
 
-            const { id, situationId, name, category, checked } = itemData;
+            const { id, situationId, name, category, checked, order } = itemData;
             try {
                 if (id) {
                     await updateDoc(documentRef('couple_packing_items', id), {
@@ -783,11 +785,18 @@
                         category
                     });
                 } else {
+                    const sameSituationItems = (window.appState.packingItems || [])
+                        .filter(item => item.situationId === situationId);
+                    const maxOrder = sameSituationItems.reduce((max, item) => {
+                        const value = Number.isFinite(item.order) ? item.order : (item.createdAt || 0);
+                        return Math.max(max, value);
+                    }, -1);
                     const newItem = {
                         situationId,
                         name,
                         category,
                         checked: checked || false,
+                        order: Number.isFinite(order) ? order : maxOrder + 1,
                         createdAt: Date.now()
                     };
                     await addDoc(collectionRef('couple_packing_items'), newItem);
@@ -797,6 +806,55 @@
                 return true;
             } catch (error) {
                 reportFirebaseError('준비물 저장', error, true);
+                return false;
+            }
+        };
+
+        window.movePackingItem = async function(itemId, direction) {
+            const sitId = window.appState.activeSituationId;
+            if (!sitId || !requireFirebase('준비물 순서 변경')) return false;
+
+            const currentItem = (window.appState.packingItems || []).find(item => item.id === itemId);
+            if (!currentItem) return false;
+
+            const currentCategory = (currentItem.category || '📄 서류/기타').trim();
+
+            // 순서 편집은 같은 카테고리 안에서만 동작합니다.
+            const ordered = (window.appState.packingItems || [])
+                .filter(item =>
+                    item.situationId === sitId &&
+                    (item.category || '📄 서류/기타').trim() === currentCategory
+                )
+                .sort((a, b) => {
+                    const aOrder = Number.isFinite(a.order) ? a.order : (a.createdAt || 0);
+                    const bOrder = Number.isFinite(b.order) ? b.order : (b.createdAt || 0);
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    return String(a.id).localeCompare(String(b.id));
+                });
+
+            const currentIndex = ordered.findIndex(item => item.id === itemId);
+            if (currentIndex === -1) return false;
+
+            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (targetIndex < 0 || targetIndex >= ordered.length) return false;
+
+            [ordered[currentIndex], ordered[targetIndex]] = [ordered[targetIndex], ordered[currentIndex]];
+
+            try {
+                const batch = writeBatch(db);
+                ordered.forEach((item, index) => {
+                    batch.update(documentRef('couple_packing_items', item.id), { order: index });
+                });
+                await batch.commit();
+
+                const orderMap = new Map(ordered.map((item, index) => [item.id, index]));
+                window.appState.packingItems = (window.appState.packingItems || []).map(item =>
+                    orderMap.has(item.id) ? { ...item, order: orderMap.get(item.id) } : item
+                );
+                if (window.appState.currentMainTab === 'packing') renderPacking();
+                return true;
+            } catch (error) {
+                reportFirebaseError('준비물 순서 변경', error, true);
                 return false;
             }
         };
@@ -1083,8 +1141,16 @@
             const activeTitle = activeSit ? activeSit.name : '상황 미선택';
             document.getElementById('active-situation-title').innerText = activeTitle;
 
-            // Filter items for current active situation
-            const currentItems = (window.appState.packingItems || []).filter(i => i.situationId === activeId);
+            // Filter and sort items by the couple's saved order.
+            // Legacy items without an order field fall back to createdAt, so old data is also shown in input order.
+            const currentItems = (window.appState.packingItems || [])
+                .filter(i => i.situationId === activeId)
+                .sort((a, b) => {
+                    const aOrder = Number.isFinite(a.order) ? a.order : (a.createdAt || 0);
+                    const bOrder = Number.isFinite(b.order) ? b.order : (b.createdAt || 0);
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    return String(a.id).localeCompare(String(b.id));
+                });
             const total = currentItems.length;
             const checked = currentItems.filter(i => i.checked).length;
             const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
@@ -1092,17 +1158,11 @@
             document.getElementById('packing-progress-pct').innerText = `${pct}%`;
             document.getElementById('packing-progress-bar').style.width = `${pct}%`;
 
-            // Group by category: show default categories first, then any custom categories created by the couple
-            const defaultCategories = ['👶 아기용품', '👕 의류/잡화', '🧼 세면/화장품', '🔌 전자기기', '💊 비상약/위생', '📄 서류/기타'];
-            const customCategories = [...new Set(currentItems
-                .map(i => (i.category || '').trim())
-                .filter(cat => cat && !defaultCategories.includes(cat))
-            )];
-            const categories = [...defaultCategories, ...customCategories];
             const container = document.getElementById('packing-items-container');
             if (!container) return;
 
             if (total === 0) {
+                window.appState.packingOrderEditing = false;
                 container.innerHTML = `
                     <div class="col-span-full bg-white rounded-3xl p-8 border border-slate-200 text-center space-y-3">
                         <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
@@ -1118,61 +1178,96 @@
                 return;
             }
 
-            container.innerHTML = categories.map(cat => {
-                const catItems = currentItems.filter(i => (i.category || '📄 서류/기타') === cat);
-                if (catItems.length === 0) return '';
+            const isOrderEditing = !!window.appState.packingOrderEditing;
 
-                const catChecked = catItems.filter(i => i.checked).length;
+            // 카테고리별 구분은 유지하되, 각 카테고리 안에서는 입력/저장 순서대로 표시합니다.
+            const defaultCategories = ['👶 아기용품', '👕 의류/잡화', '🧼 세면/화장품', '🔌 전자기기', '💊 비상약/위생', '📄 서류/기타'];
+            const customCategories = [...new Set(currentItems
+                .map(item => (item.category || '📄 서류/기타').trim())
+                .filter(category => category && !defaultCategories.includes(category))
+            )];
+            const categories = [...defaultCategories, ...customCategories];
+
+            const orderToolbar = `
+                <div class="col-span-full flex justify-end">
+                    <button onclick="togglePackingOrderEdit()" class="text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-colors ${isOrderEditing ? 'bg-teal-600 border-teal-600 text-white hover:bg-teal-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}">
+                        <i class="fa-solid ${isOrderEditing ? 'fa-check' : 'fa-arrow-down-up-across-line'} mr-1"></i>
+                        ${isOrderEditing ? '편집 완료' : '순서 편집'}
+                    </button>
+                </div>
+            `;
+
+            const categoryCards = categories.map(category => {
+                const categoryItems = currentItems.filter(item =>
+                    (item.category || '📄 서류/기타').trim() === category
+                );
+                if (categoryItems.length === 0) return '';
+
+                const categoryChecked = categoryItems.filter(item => item.checked).length;
 
                 return `
-                    <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-                                <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                    <span>${escapeHtml(cat)}</span>
-                                    <span class="text-[10px] text-slate-400 font-normal">(${catChecked}/${catItems.length})</span>
-                                </h4>
-                                <button onclick='openPackingItemModal(${JSON.stringify(cat)})' class="text-[10px] text-teal-600 hover:underline font-bold">
+                    <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3 flex flex-col">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5 min-w-0">
+                                <span class="truncate">${escapeHtml(category)}</span>
+                                <span class="text-[10px] text-slate-400 font-normal shrink-0">(${categoryChecked}/${categoryItems.length})</span>
+                            </h4>
+                            ${isOrderEditing ? '' : `
+                                <button onclick='openPackingItemModal(${JSON.stringify(category)})' class="text-[10px] text-teal-600 hover:underline font-bold shrink-0">
                                     + 추가
                                 </button>
-                            </div>
+                            `}
+                        </div>
 
-                            <div class="space-y-2">
-                                ${catItems.map(item => {
-                                    const isDone = item.checked;
-
-                                    return `
-                                        <div class="p-2.5 rounded-xl border border-slate-100 ${isDone ? 'bg-slate-50' : 'bg-white hover:border-teal-200'} flex items-start gap-2.5 transition-all group">
-                                            <button onclick="togglePackingItem('${item.id}')" class="mt-0.5 shrink-0 w-4 h-4 rounded-md border ${isDone ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 hover:border-teal-500'} flex items-center justify-center transition-all">
-                                                ${isDone ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
-                                            </button>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center justify-between gap-1">
-                                                    <p class="text-xs font-semibold text-slate-800 break-words ${isDone ? 'line-through text-slate-400' : ''}">
-                                                        ${escapeHtml(item.name)}
-                                                    </p>
-                                                    <div class="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100">
-                                                        <button onclick="openEditPackingItemModal('${item.id}')" class="text-slate-300 hover:text-slate-600 p-0.5">
-                                                            <i class="fa-solid fa-pen text-[10px]"></i>
-                                                        </button>
-                                                        <button onclick="confirmDeletePackingItem('${item.id}')" class="text-slate-300 hover:text-rose-500 p-0.5">
-                                                            <i class="fa-solid fa-trash-can text-[10px]"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
+                        <div class="space-y-2">
+                            ${categoryItems.map((item, index) => {
+                                const isDone = item.checked;
+                                return `
+                                    <div class="p-3 rounded-xl border border-slate-100 ${isDone ? 'bg-slate-50' : 'bg-white hover:border-teal-200'} flex items-center gap-2.5 transition-all group">
+                                        <button onclick="togglePackingItem('${item.id}')" class="shrink-0 w-5 h-5 rounded-md border ${isDone ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 hover:border-teal-500'} flex items-center justify-center transition-all">
+                                            ${isDone ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+                                        </button>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-semibold text-slate-800 break-words ${isDone ? 'line-through text-slate-400' : ''}">
+                                                ${escapeHtml(item.name)}
+                                            </p>
                                         </div>
-                                    `;
-                                }).join('')}
-                            </div>
+                                        <div class="flex items-center gap-1 shrink-0">
+                                            ${isOrderEditing ? `
+                                                <button onclick="movePackingItem('${item.id}', 'up')" ${index === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed" title="같은 카테고리 안에서 위로 이동">
+                                                    <i class="fa-solid fa-chevron-up text-[10px]"></i>
+                                                </button>
+                                                <button onclick="movePackingItem('${item.id}', 'down')" ${index === categoryItems.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed" title="같은 카테고리 안에서 아래로 이동">
+                                                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                                                </button>
+                                            ` : `
+                                                <button onclick="openEditPackingItemModal('${item.id}')" class="text-slate-300 hover:text-slate-600 p-1" title="수정">
+                                                    <i class="fa-solid fa-pen text-[10px]"></i>
+                                                </button>
+                                                <button onclick="confirmDeletePackingItem('${item.id}')" class="text-slate-300 hover:text-rose-500 p-1" title="삭제">
+                                                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                                </button>
+                                            `}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 `;
             }).join('');
+
+            container.innerHTML = orderToolbar + categoryCards;
+        }
+
+        function togglePackingOrderEdit() {
+            window.appState.packingOrderEditing = !window.appState.packingOrderEditing;
+            renderPacking();
         }
 
         function switchSituation(sitId) {
             window.appState.activeSituationId = sitId;
+            window.appState.packingOrderEditing = false;
             renderPacking();
         }
 
